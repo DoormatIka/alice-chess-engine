@@ -11,15 +11,20 @@ pub fn print_board_from_fen(fen: &str, targets: &Vec<ChessMove>, moves: &Vec<Che
             match c {
                 '1'..='8' => {
                     let num = c.to_digit(10).unwrap();
-                    for k in 0..num {
-                        if moves.iter().any(|v| v.get_dest().to_index() == (8 * (7 - i)) + (7 - (j + k as usize)) as usize) {
-                            line.push_str(&"[ ]".green().to_string());
+                    for e in 0..num {
+                        let sq_index = (8 * (7 - i)) + (7 - e as usize) as usize;
+                        let piece = format!("[ ]{}", sq_index as usize);
+                        if moves.iter().any(|v| v.get_dest().to_index() == sq_index) {
+                            line.push_str(&piece.green().to_string());
                         } else {
-                            line.push_str("[ ]");
+                            line.push_str(&piece);
                         }
                     }
                 }
-                _ => line.push_str(&format!("[{}]", c)),
+                _ => {
+                    let piece = format!("[{}]", c);
+                    line.push_str(&piece);
+                },
             }
         }
         println!("{} {}", 8-i, line);
