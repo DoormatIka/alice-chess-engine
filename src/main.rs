@@ -1,14 +1,19 @@
 
 use peak_alloc::PeakAlloc;
-use chess::{MoveGen, Board, EMPTY};
+use chess::{MoveGen, Board, EMPTY, ChessMove};
+use colored::*;
 
 #[global_allocator]
 static PEAK_ALLOC: PeakAlloc = PeakAlloc;
 
+fn print_fen(fen: &str, capture_moves: Vec<ChessMove>, non_capture_moves: Vec<ChessMove>) {
+    // psst, color the moves.
+    let colored = format!("{}, {}", "green".green(), "red".red());
+}
+
 fn main() {
     let board = Board::default();
     let mut legal_iterable = MoveGen::new_legal(&board);
-    ;
 
     let targets = board.color_combined(!board.side_to_move());
 
