@@ -2,20 +2,19 @@ use chess::ChessMove;
 use colored::*;
 
 pub fn print_board_from_fen(fen: &str, targets: &Vec<ChessMove>, moves: &Vec<ChessMove>) {
-    let parts: Vec<&str> = fen.split(' ').collect();
-    let rows: Vec<&str> = parts[0].split('/').collect();
+    let fen_parts: Vec<&str> = fen.split(' ').collect();
+    let board_rows: Vec<&str> = fen_parts[0].split('/').collect();
 
-    for (i, row) in rows.iter().enumerate() {
+    for (row_index, row) in board_rows.iter().enumerate() {
         let mut line = String::new();
-        for (j, c) in row.chars().enumerate() {
-            match c {
+        for (char_index, character) in row.chars().enumerate() {
+            match character {
                 '1'..='8' => {
-                    let num = c.to_digit(10).unwrap();
-                    for e in 0..num {
-                        // miscount of sq_index, different stuff with e and j
-                        let sq_index = (8 * (7 - i)) + (7 - e as usize) as usize;
-                        let piece = format!("[ ]{}", sq_index as usize);
-                        if moves.iter().any(|v| v.get_dest().to_index() == sq_index) {
+                    let num_spaces = character.to_digit(10).unwrap();
+                    for empty_space_index in 0..num_spaces {
+                        let square_index = (8 * (7 - row_index)) + (char_index + empty_space_index as usize) as usize;
+                        let piece = format!("[ ]{}", square_index as usize);
+                        if moves.iter().any(|chess_move| chess_move.get_dest().to_index() == square_index) {
                             line.push_str(&piece.green().to_string());
                         } else {
                             line.push_str(&piece);
@@ -23,16 +22,16 @@ pub fn print_board_from_fen(fen: &str, targets: &Vec<ChessMove>, moves: &Vec<Che
                     }
                 }
                 _ => {
-                    let piece = format!("[{}]", c);
+                    let piece = format!("[{}]", character);
                     line.push_str(&piece);
                 },
             }
         }
-        println!("{} {}", 8-i, line);
+        println!("{} {}", 8-row_index, line);
     }
     println!("   a  b  c  d  e  f  g  h");
 
-    let turn = match parts[1] {
+    let turn = match fen_parts[1] {
         "w" => "White's turn",
         "b" => "Black's turn",
         _ => "Unknown",
