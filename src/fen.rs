@@ -12,6 +12,7 @@ pub fn print_board_from_fen(fen: &str, targets: &Vec<ChessMove>, moves: &Vec<Che
                 '1'..='8' => {
                     let num = c.to_digit(10).unwrap();
                     for e in 0..num {
+                        // miscount of sq_index, different stuff with e and j
                         let sq_index = (8 * (7 - i)) + (7 - e as usize) as usize;
                         let piece = format!("[ ]{}", sq_index as usize);
                         if moves.iter().any(|v| v.get_dest().to_index() == sq_index) {
