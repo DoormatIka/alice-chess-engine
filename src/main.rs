@@ -1,17 +1,11 @@
 
 use fen::print_board_from_fen;
 use peak_alloc::PeakAlloc;
-use chess::{MoveGen, Board, EMPTY, ChessMove};
-use colored::*;
+use chess::{MoveGen, Board, EMPTY};
 pub mod fen;
 
 #[global_allocator]
 static PEAK_ALLOC: PeakAlloc = PeakAlloc;
-
-fn print_fen(fen: &str, capture_moves: Vec<ChessMove>, non_capture_moves: Vec<ChessMove>) {
-    // psst, color the moves.
-    let colored = format!("{}, {}", "green".green(), "red".red());
-}
 
 fn main() {
     let board = Board::default();
@@ -32,7 +26,7 @@ fn main() {
     }
 
     // Prints board from fen...
-    print_board_from_fen("r1bqkb1r/p1p2npp/2pp2n1/p7/3B4/1R1QPK1P/PPNP1PP1/5BNR b - - 0 1");
+    print_board_from_fen(board.to_string().as_str(), &capture_moves, &non_capture_moves);
 
     println!("Default position: {:?} \nCapture Moves:\n {:?}\n\n Non-capture Moves:\n {:?}\n\n", board.to_string(), capture_moves, non_capture_moves);
 
