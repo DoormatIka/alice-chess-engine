@@ -4,7 +4,9 @@ use colored::*;
 
 pub fn print_board_from_fen(fen: &str, targets: &Vec<ChessMove>, moves: &Vec<ChessMove>) {
     let parts: Vec<&str> = fen.split(' ').collect();
-    let rows: Vec<&str> = parts[0].split('/').collect();
+    let mut rows: Vec<&str> = parts[0].split('/').collect();
+
+    rows.reverse();
 
     for (i, row) in rows.iter().enumerate() { // row number
         for c in row.chars() {
