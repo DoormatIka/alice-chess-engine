@@ -8,7 +8,7 @@ pub fn print_board_from_fen(fen: &str, targets: &Vec<ChessMove>, moves: &Vec<Che
     for (row_index, row) in board_rows.iter().enumerate() {
         let mut line = String::new();
         for (char_index, character) in row.chars().enumerate() {
-            let square_index = (8 * (7 - row_index)) + (char_index as usize) as usize;
+
             match character {
                 '1'..='8' => {
                     let num_spaces = character.to_digit(10).unwrap();
@@ -23,6 +23,7 @@ pub fn print_board_from_fen(fen: &str, targets: &Vec<ChessMove>, moves: &Vec<Che
                     }
                 }
                 _ => {
+                    let square_index = (8 * (7 - row_index)) + char_index;
                     let piece = format!("[{}]{}", character, square_index);
                     if targets.iter().any(|chess_move| chess_move.get_dest().to_index() == square_index) {
                         line.push_str(&piece.red().to_string());
