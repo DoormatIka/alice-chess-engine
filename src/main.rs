@@ -10,7 +10,12 @@ pub mod fen;
 static PEAK_ALLOC: PeakAlloc = PeakAlloc;
 
 fn main() {
-    let board = Board::from_str("rnb1kbnr/5ppp/p7/1p6/2p5/8/PPP1QPPP/RNB1KBNR b KQkq - 0 1").unwrap();
+    let black_on_check = "rnb1kbnr/5ppp/p7/1p6/2p5/8/PPP1QPPP/RNB1KBNR b KQkq - 0 1";
+    let capture = "rnbqkbnr/ppppp1pp/8/5p2/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
+    let starting = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
+    let en_passant = "rnbqkbnr/ppppp1pp/8/8/4Pp2/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1";
+
+    let board = Board::from_str(capture).unwrap();
     let mut legal_iterable = MoveGen::new_legal(&board);
 
     let targets = board.color_combined(!board.side_to_move());
@@ -34,8 +39,6 @@ fn main() {
             non_capture_moves.push(mov);
         }
     }
-
-
 
     // Prints board from fen...
     print_board_from_fen(board.to_string().as_str(), &capture_moves, &non_capture_moves);
