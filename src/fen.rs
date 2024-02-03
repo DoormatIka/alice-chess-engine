@@ -2,6 +2,8 @@ use chess::ChessMove;
 use colored::*;
 
 pub fn print_board_from_fen(fen: &str, targets: &Vec<ChessMove>, moves: &Vec<ChessMove>) {
+    dbg!(targets.len(), moves.len());
+
     let fen_parts: Vec<&str> = fen.split(' ').collect();
     let board_rows: Vec<&str> = fen_parts[0].split('/').collect();
 
@@ -23,7 +25,7 @@ pub fn print_board_from_fen(fen: &str, targets: &Vec<ChessMove>, moves: &Vec<Che
                     for _ in 0..num_spaces {
                         let piece = format!(" . ");
                         if moves.iter().any(|chess_move| chess_move.get_dest().to_index() == square_index) {
-                            line.push_str(&piece.green());
+                            line.push_str(&piece.green().to_string());
                         } else {
                             line.push_str(&piece);
                         }
@@ -33,7 +35,7 @@ pub fn print_board_from_fen(fen: &str, targets: &Vec<ChessMove>, moves: &Vec<Che
                 _ => {
                     let piece = format!(" {} ", character);
                     if targets.iter().any(|chess_move| chess_move.get_dest().to_index() == square_index) {
-                        line.push_str(&piece.red());
+                        line.push_str(&piece.red().to_string());
                     } else {
                         line.push_str(&piece);
                     }

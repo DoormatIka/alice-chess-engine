@@ -54,11 +54,11 @@ fn main() {
             non_capture_moves.push(mov);
         }
 
+        print_board_from_fen(game.current_position().to_string().as_str(), &capture_moves, &non_capture_moves);
+
         let mut all_move: Vec<ChessMove> = vec![];
         all_move.append(&mut capture_moves);
         all_move.append(&mut non_capture_moves);
-
-        print_board_from_fen(game.current_position().to_string().as_str(), &capture_moves, &non_capture_moves);
 
         if let Some(player_color) = player_color {
             if game.side_to_move() == player_color {
