@@ -3,10 +3,8 @@ use std::{str::FromStr, vec, io::stdin};
 
 use fen::print_board_from_fen;
 use peak_alloc::PeakAlloc;
-use chess::{MoveGen, EMPTY, Game, ChessMove, BoardStatus, Color, Board};
+use chess::{MoveGen, EMPTY, Game, ChessMove, BoardStatus, Color, Board, Piece};
 use rand::seq::SliceRandom;
-
-use std::time::Instant;
 
 pub mod fen;
 
@@ -19,10 +17,9 @@ fn main() {
     let starting = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     let en_passant = "rnbqkbnr/ppppp1pp/8/8/4Pp2/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1";
 
-    let mut game = Game::from_str(starting).unwrap();
+    let mut game = Game::from_str(black_on_check).unwrap();
     let player_color: Option<Color> = Some(Color::Black);
 
-    let start = Instant::now();
     loop {
         let board = game.current_position();
 
@@ -43,12 +40,13 @@ fn main() {
         let targets = board.color_combined(!game.side_to_move());
 
         let mut capture_moves: Vec<_> = vec![];
+        let mut non_capture_moves: Vec<_> = vec![];
+
         legal_iterable.set_iterator_mask(*targets);
         for mov in &mut legal_iterable {
             capture_moves.push(mov);
         }
 
-        let mut non_capture_moves: Vec<_> = vec![];
         legal_iterable.set_iterator_mask(!EMPTY);
         for mov in &mut legal_iterable {
             non_capture_moves.push(mov);
@@ -71,6 +69,9 @@ fn main() {
                     }
                 };
             } else {
+                let bot = BasicBot { board: board.clone() };
+                bot.count_material();
+
                 let chosen = all_move.choose(&mut rand::thread_rng());
                 if let Some(chosen) = chosen {
                     game.make_move(*chosen);
@@ -82,13 +83,39 @@ fn main() {
                 game.make_move(*chosen);
             }
         }
+
+        let peak_mem = PEAK_ALLOC.peak_usage_as_kb();
+        println!("The max memory that was used: {}kb", peak_mem);
     }
+}
 
-    let elapsed = start.elapsed();
-    println!("Duration: {} ms", elapsed.as_millis());
+struct BasicBot {
+    board: Board,
+}
+impl BasicBot {
+    fn count_material(&self) {
+        let material = 0;
 
-    let peak_mem = PEAK_ALLOC.peak_usage_as_kb();
-    println!("The max memory that was used: {}kb", peak_mem);
+        // currently returns both black and white's pieces.
+        let kings = self.board.pieces(Piece::King).popcnt();
+        let pawns = self.board.pieces(Piece::Pawn).popcnt();
+        let rooks = self.board.pieces(Piece::Rook).popcnt();
+        let queens = self.board.pieces(Piece::Queen).popcnt();
+        let knights = self.board.pieces(Piece::Knight).popcnt();
+        let bishops = self.board.pieces(Piece::Bishop).popcnt();
+    }
+}
+impl Search for BasicBot {
+    
+}
+impl Evaluation for BasicBot {
+
+}
+trait Search {
+    fn search() {}
+}
+trait Evaluation {
+    fn evaluation() {}
 }
 
 /**
