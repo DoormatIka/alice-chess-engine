@@ -138,7 +138,6 @@ impl BasicBot {
     }
 
     fn internal_search(&mut self, board: &Board, depth: u16, mut alpha: i32, beta: i32) -> i32 {
-
         let negative_infinity = -1000000;
 
         if depth == 0 {
@@ -159,29 +158,29 @@ impl BasicBot {
             return 0;
         }
 
-        let mut best_move = Some(all_move[0]);
+
+        let mut best_eval = negative_infinity;
+        let mut best_move = None;
 
         for board_move in all_move.iter() {
             let board = board.make_move_new(*board_move);
             let eval = -self.internal_search(&board, depth - 1, -beta, -alpha);
-            
-            dbg!(eval, alpha, best_move.is_none(), beta);
-
-            if eval >= beta { // alpha beta pruning
-                return beta;
+        
+        dbg!(&eval, &best_eval, &alpha, &beta, &best_move, &board_move, &depth);
+            if eval > best_eval {
+                best_eval = eval;
+                best_move = Some(*board_move);
             }
-
-            best_move = Some(*board_move);
-            alpha = cmp::max(eval, alpha);
+        
+            alpha = cmp::max(alpha, eval);
+            if alpha >= beta {
+                break;
+            }
         }
-
-        if best_move.is_none() && !all_move.is_empty() {
-            best_move = Some(all_move[0]);
-        }
-
-        self.best_eval = alpha;
+        
+        self.best_eval = best_eval;
         self.best_move = best_move;
-
+        
         self.best_eval
     }
 }
