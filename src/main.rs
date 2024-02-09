@@ -1,5 +1,5 @@
 
-use std::{str::FromStr, vec, io::stdin};
+use std::{str::FromStr, vec, io::stdin, cmp};
 
 use fen::print_board_from_fen;
 use peak_alloc::PeakAlloc;
@@ -109,9 +109,8 @@ impl BasicBot {
     }
 }
 impl Search for BasicBot {
-    fn search(&self, depth: u8) -> i32 {
+    fn search(&self, board: &Board, depth: u8) -> i32 {
         let negative_infinity = -1000000;
-        let mut board = self.board.clone();
 
         if depth == 0 {
             return self.evaluation();
@@ -131,15 +130,13 @@ impl Search for BasicBot {
             return 0;
         }
 
-        let best_eval = negative_infinity;
+        let mut best_eval = negative_infinity;
 
         for board_move in all_move {
             // returns the board after the move has been done
-            let new_board = board.make_move_new(board_move);
-            self.search(depth - 1);
-            // undoing the make_move
-            // does this even make sense?
-            board = new_board; 
+            let new_board = board.make_move_new(board_move); // me make move
+            let eval = -self.search(&new_board, depth - 1);
+            best_eval = cmp::max(eval, best_eval);
         }
 
         best_eval
@@ -151,7 +148,7 @@ impl Evaluation for BasicBot {
     }
 }
 trait Search {
-    fn search(&self, depth: u8) -> i32;
+    fn search(&self, board: &Board, depth: u8) -> i32;
 }
 trait Evaluation {
     fn evaluation(&self) -> i32;
