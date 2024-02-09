@@ -46,6 +46,9 @@ fn main() {
 
         if let Some(player_color) = player_color {
             if game.side_to_move() == player_color {
+                for chess_move in all_move {
+                    print!("{} ", chess_move);
+                }
                 let chess_move = get_user_move(&board);
                 match chess_move {
                     Ok(chess_move) => game.make_move(chess_move),
@@ -58,11 +61,13 @@ fn main() {
                 let bot = BasicBot { board: board.clone() };
                 let (eval, chess_move) = bot.search(3);
                 game.make_move(chess_move);
+                println!("Made move with eval {}, {}", eval, chess_move);
             }
         } else {
             let bot = BasicBot { board: board.clone() };
             let (eval, chess_move) = bot.search(3);
             game.make_move(chess_move);
+            println!("Made move with eval {}, {}", eval, chess_move);
         }
 
         let peak_mem = PEAK_ALLOC.peak_usage_as_kb();
@@ -73,41 +78,43 @@ fn main() {
 struct BasicBot {
     board: Board,
 }
+trait Search {
+    fn search(&self, depth: u8) -> (i32, ChessMove);
+}
+trait Evaluation {
+    fn evaluation(&self, board: &Board) -> i32;
+}
+
 impl Search for BasicBot {
+    // external function, interacts with self
     fn search(&self, depth: u8) -> (i32, ChessMove) {
         let mut best_move: Option<ChessMove> = None;
         let best_eval = self.internal_search(&self.board, depth, &mut best_move);
         (best_eval, best_move.unwrap())
     }
-
 }
 impl Evaluation for BasicBot {
-    fn evaluation(&self) -> i32 {
-        self.count_material()
+    // internal function, doesn't interact with self
+    fn evaluation(&self, board: &Board) -> i32 {
+        self.count_material(board)
     }
 }
-trait Search {
-    fn search(&self, depth: u8) -> (i32, ChessMove);
-}
-trait Evaluation {
-    fn evaluation(&self) -> i32;
-}
 impl BasicBot {
-    pub fn count_material(&self) -> i32 {
-        let white = get_colored_pieces(&self.board, Color::White);
-        let black = get_colored_pieces(&self.board, Color::Black);
+    pub fn count_material(&self, board: &Board) -> i32 {
+        let white = get_colored_pieces(&board, Color::White);
+        let black = get_colored_pieces(&board, Color::Black);
 
-        let material_white = self.calculate_material(white);
-        let material_black = self.calculate_material(black);
+        let material_white = self.calculate_material(white) as i32;
+        let material_black = self.calculate_material(black) as i32;
 
         let eval = material_white - material_black;
-        let perspective = if self.board.side_to_move() == Color::White {
+        let perspective = if board.side_to_move() == Color::White {
             1
         } else {
             -1
         };
 
-        return eval as i32 * perspective;
+        return eval * perspective;
     }
 
     fn calculate_material(&self, pieces: PiecesColored) -> u32 {
@@ -122,11 +129,11 @@ impl BasicBot {
         material
     }
 
-    fn internal_search(&mut self, board: &Board, depth: u8, best_move: &mut Option<ChessMove>) -> i32 {
+    fn internal_search(&self, board: &Board, depth: u8, best_move: &mut Option<ChessMove>) -> i32 {
         let negative_infinity = -1000000;
 
         if depth == 0 {
-            return self.evaluation();
+            return self.evaluation(board);
         }
         
         // generate moves here
@@ -137,7 +144,7 @@ impl BasicBot {
         all_move.append(&mut non_capture_moves);
 
         if all_move.len() == 0 {
-            if self.board.checkers().popcnt() != 0 {
+            if board.checkers().popcnt() != 0 {
                 return negative_infinity;
             }
             return 0;
@@ -147,9 +154,9 @@ impl BasicBot {
 
         for board_move in all_move {
             // currently trying to assign the new board to the self.board
-            self.board = board.make_move_new(board_move);
+            let board = board.make_move_new(board_move);
             // and using it here
-            let eval = -self.internal_search(&mut self.board, depth - 1, best_move);
+            let eval = -self.internal_search(&board, depth - 1, best_move);
 
             if eval > best_eval {
                 *best_move = Some(board_move);
