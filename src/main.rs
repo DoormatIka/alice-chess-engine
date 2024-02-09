@@ -17,7 +17,7 @@ fn main() {
     let starting = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     let en_passant = "rnbqkbnr/ppppp1pp/8/8/4Pp2/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1";
 
-    let mut game = Game::from_str(black_on_check).unwrap();
+    let mut game = Game::from_str(starting).unwrap();
     let player_color: Option<Color> = Some(Color::Black);
 
     loop {
@@ -58,13 +58,13 @@ fn main() {
                     }
                 };
             } else {
-                let bot = BasicBot { board: board.clone() };
+                let mut bot = BasicBot { board: board.clone(), best_move: None, best_eval: -99999999 };
                 let (eval, chess_move) = bot.search(3);
                 game.make_move(chess_move);
                 println!("Made move with eval {}, {}", eval, chess_move);
             }
         } else {
-            let bot = BasicBot { board: board.clone() };
+            let mut bot = BasicBot { board: board.clone(), best_move: None, best_eval: -9999999 };
             let (eval, chess_move) = bot.search(3);
             game.make_move(chess_move);
             println!("Made move with eval {}, {}", eval, chess_move);
@@ -77,9 +77,11 @@ fn main() {
 
 struct BasicBot {
     board: Board,
+    best_move: Option<ChessMove>,
+    best_eval: i32,
 }
 trait Search {
-    fn search(&self, depth: u8) -> (i32, ChessMove);
+    fn search(&mut self, depth: u8) -> (i32, ChessMove);
 }
 trait Evaluation {
     fn evaluation(&self, board: &Board) -> i32;
@@ -87,10 +89,10 @@ trait Evaluation {
 
 impl Search for BasicBot {
     // external function, interacts with self
-    fn search(&self, depth: u8) -> (i32, ChessMove) {
-        let mut best_move: Option<ChessMove> = None;
-        let best_eval = self.internal_search(&self.board, depth, &mut best_move);
-        (best_eval, best_move.unwrap())
+    fn search(&mut self, depth: u8) -> (i32, ChessMove) {
+        let board = self.board.clone();
+        let best_eval = self.internal_search(&board, depth);
+        (best_eval, self.best_move.unwrap())
     }
 }
 impl Evaluation for BasicBot {
@@ -129,7 +131,7 @@ impl BasicBot {
         material
     }
 
-    fn internal_search(&self, board: &Board, depth: u8, best_move: &mut Option<ChessMove>) -> i32 {
+    fn internal_search(&mut self, board: &Board, depth: u8) -> i32 {
         let negative_infinity = -1000000;
 
         if depth == 0 {
@@ -150,21 +152,19 @@ impl BasicBot {
             return 0;
         }
 
-        let mut best_eval = negative_infinity;
-
         for board_move in all_move {
-            // currently trying to assign the new board to the self.board
             let board = board.make_move_new(board_move);
-            // and using it here
-            let eval = -self.internal_search(&board, depth - 1, best_move);
+            let eval = -self.internal_search(&board, depth - 1);
 
-            if eval > best_eval {
-                *best_move = Some(board_move);
-                best_eval = cmp::max(eval, best_eval);
+            println!("{:?}, {:?}, {}", self.best_move, self.best_eval, eval);
+
+            self.best_eval = cmp::max(eval, self.best_eval);
+            if eval > self.best_eval {
+                self.best_move = Some(board_move);
             }
         }
 
-        best_eval
+        self.best_eval
     }
 }
 
