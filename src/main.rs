@@ -56,12 +56,7 @@ fn main() {
                 };
             } else {
                 let bot = BasicBot { board: board.clone() };
-                bot.count_material();
-
-                let chosen = all_move.choose(&mut rand::thread_rng());
-                if let Some(chosen) = chosen {
-                    game.make_move(*chosen);
-                }
+                let eval = bot.search(3); // the hell do i do to extract a move?
             }
         } else {
             let chosen = all_move.choose(&mut rand::thread_rng());
@@ -77,6 +72,23 @@ fn main() {
 
 struct BasicBot {
     board: Board,
+}
+impl Search for BasicBot {
+    fn search(&self, depth: u8) -> i32 {
+        self.internal_search(&self.board, depth)
+    }
+
+}
+impl Evaluation for BasicBot {
+    fn evaluation(&self) -> i32 {
+        self.count_material()
+    }
+}
+trait Search {
+    fn search(&self, depth: u8) -> i32;
+}
+trait Evaluation {
+    fn evaluation(&self) -> i32;
 }
 impl BasicBot {
     pub fn count_material(&self) -> i32 {
@@ -107,9 +119,8 @@ impl BasicBot {
 
         material
     }
-}
-impl Search for BasicBot {
-    fn search(&self, board: &Board, depth: u8) -> i32 {
+
+    fn internal_search(&self, board: &Board, depth: u8) -> i32 {
         let negative_infinity = -1000000;
 
         if depth == 0 {
@@ -135,23 +146,12 @@ impl Search for BasicBot {
         for board_move in all_move {
             // returns the board after the move has been done
             let new_board = board.make_move_new(board_move); // me make move
-            let eval = -self.search(&new_board, depth - 1);
+            let eval = -self.internal_search(&new_board, depth - 1);
             best_eval = cmp::max(eval, best_eval);
         }
 
         best_eval
     }
-}
-impl Evaluation for BasicBot {
-    fn evaluation(&self) -> i32 {
-        self.count_material()
-    }
-}
-trait Search {
-    fn search(&self, board: &Board, depth: u8) -> i32;
-}
-trait Evaluation {
-    fn evaluation(&self) -> i32;
 }
 
 struct PiecesColored {
