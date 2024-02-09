@@ -56,13 +56,13 @@ fn main() {
                 };
             } else {
                 let bot = BasicBot { board: board.clone() };
-                let eval = bot.search(3); // the hell do i do to extract a move?
+                let (eval, chess_move) = bot.search(3);
+                game.make_move(chess_move);
             }
         } else {
-            let chosen = all_move.choose(&mut rand::thread_rng());
-            if let Some(chosen) = chosen {
-                game.make_move(*chosen);
-            }
+            let bot = BasicBot { board: board.clone() };
+            let (eval, chess_move) = bot.search(3);
+            game.make_move(chess_move);
         }
 
         let peak_mem = PEAK_ALLOC.peak_usage_as_kb();
@@ -74,8 +74,10 @@ struct BasicBot {
     board: Board,
 }
 impl Search for BasicBot {
-    fn search(&self, depth: u8) -> i32 {
-        self.internal_search(&self.board, depth)
+    fn search(&self, depth: u8) -> (i32, ChessMove) {
+        let best_move: Option<ChessMove> = None;
+        let best_eval = self.internal_search(&self.board, depth, best_move);
+        (best_eval, best_move.unwrap())
     }
 
 }
@@ -85,7 +87,7 @@ impl Evaluation for BasicBot {
     }
 }
 trait Search {
-    fn search(&self, depth: u8) -> i32;
+    fn search(&self, depth: u8) -> (i32, ChessMove);
 }
 trait Evaluation {
     fn evaluation(&self) -> i32;
@@ -120,7 +122,7 @@ impl BasicBot {
         material
     }
 
-    fn internal_search(&self, board: &Board, depth: u8) -> i32 {
+    fn internal_search(&self, board: &Board, depth: u8, mut best_move: Option<ChessMove>) -> i32 {
         let negative_infinity = -1000000;
 
         if depth == 0 {
@@ -144,10 +146,14 @@ impl BasicBot {
         let mut best_eval = negative_infinity;
 
         for board_move in all_move {
-            // returns the board after the move has been done
-            let new_board = board.make_move_new(board_move); // me make move
-            let eval = -self.internal_search(&new_board, depth - 1);
-            best_eval = cmp::max(eval, best_eval);
+            let new_board = board.make_move_new(board_move);
+            let eval = -self.internal_search(&new_board, depth - 1, best_move);
+
+            // this just makes the last move the best move
+            if eval > best_eval {
+                best_move = Some(board_move);
+                best_eval = cmp::max(eval, best_eval);
+            }
         }
 
         best_eval
