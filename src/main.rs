@@ -4,7 +4,6 @@ use std::{str::FromStr, vec, io::stdin, cmp};
 use fen::print_board_from_fen;
 use peak_alloc::PeakAlloc;
 use chess::{MoveGen, EMPTY, Game, ChessMove, BoardStatus, Color, Board, Piece, BitBoard};
-use rand::seq::SliceRandom;
 
 pub mod fen;
 
@@ -12,10 +11,7 @@ pub mod fen;
 static PEAK_ALLOC: PeakAlloc = PeakAlloc;
 
 fn main() {
-    let black_on_check = "rnb1kbnr/5ppp/p7/1p6/2p5/8/PPP1QPPP/RNB1KBNR b KQkq - 0 1";
-    let capture = "rnbqkbnr/ppppp1pp/8/5p2/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
     let starting = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-    let en_passant = "rnbqkbnr/ppppp1pp/8/8/4Pp2/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1";
     let almost_mate = "6k1/1p3ppp/8/8/8/3q1bP1/5K1P/8 b - - 0 1    ";
 
     let mut game = Game::from_str(almost_mate).unwrap();
@@ -82,7 +78,7 @@ struct BasicBot {
     best_eval: i32,
 }
 trait Search {
-    fn search(&mut self, depth: u8) -> (i32, ChessMove);
+    fn search(&mut self, depth: u16) -> (i32, ChessMove);
 }
 trait Evaluation {
     fn evaluation(&self, board: &Board) -> i32;
@@ -90,9 +86,12 @@ trait Evaluation {
 
 impl Search for BasicBot {
     // external function, interacts with self
-    fn search(&mut self, depth: u8) -> (i32, ChessMove) {
+    fn search(&mut self, depth: u16) -> (i32, ChessMove) {
         let board = self.board.clone();
-        let best_eval = self.internal_search(&board, depth);
+        let alpha = 0;
+        let beta = 0;
+
+        let best_eval = self.internal_search(&board, depth, alpha, beta);
         (best_eval, self.best_move.unwrap())
     }
 }
@@ -138,7 +137,7 @@ impl BasicBot {
         material
     }
 
-    fn internal_search(&mut self, board: &Board, depth: u8) -> i32 {
+    fn internal_search(&mut self, board: &Board, depth: u16, mut alpha: i32, beta: i32) -> i32 {
 
         let negative_infinity = -1000000;
 
@@ -160,33 +159,25 @@ impl BasicBot {
             return 0;
         }
 
-        let mut best_eval = negative_infinity;
         let mut best_move = Some(all_move[0]);
 
         for board_move in all_move.iter() {
             let board = board.make_move_new(*board_move);
-            let eval = -self.internal_search(&board, depth - 1);
+            let eval = -self.internal_search(&board, depth - 1, -beta, -alpha);
 
-            /*
-            if let Some(best_move) = self.best_move {
-                println!("{}, {}", best_move, &all_move[0]);
-            } else {
-                println!("_, {}", &all_move[0]);
+            if eval >= beta { // alpha beta pruning
+                return beta;
             }
-            */
 
-            if best_eval < eval {
-                best_move = Some(*board_move);
-            }
-            best_eval = cmp::max(eval, best_eval);
+            best_move = Some(*board_move);
+            alpha = cmp::max(eval, alpha);
         }
 
-        
-if best_move.is_none() && !all_move.is_empty() {
-    best_move = Some(all_move[0]);
-}
+        if best_move.is_none() && !all_move.is_empty() {
+            best_move = Some(all_move[0]);
+        }
 
-        self.best_eval = best_eval;
+        self.best_eval = alpha;
         self.best_move = best_move;
 
         self.best_eval
