@@ -17,7 +17,7 @@ fn main() {
     let starting = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     let en_passant = "rnbqkbnr/ppppp1pp/8/8/4Pp2/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1";
 
-    let mut game = Game::from_str(black_on_check).unwrap();
+    let mut game = Game::from_str(starting).unwrap();
     let player_color: Option<Color> = Some(Color::Black);
 
     loop {
@@ -98,6 +98,8 @@ impl Search for BasicBot {
 impl Evaluation for BasicBot {
     // internal function, doesn't interact with self
     fn evaluation(&self, board: &Board) -> i32 {
+        // currently handles quiet moves like shit.
+        // if there's no capture moves, then it'll be the first move in the movelist
         self.count_material(board)
     }
 }
@@ -136,6 +138,7 @@ impl BasicBot {
     }
 
     fn internal_search(&mut self, board: &Board, depth: u8) -> i32 {
+
         let negative_infinity = -1000000;
 
         if depth == 0 {
@@ -156,16 +159,22 @@ impl BasicBot {
             return 0;
         }
 
-        for board_move in all_move {
-            let board = board.make_move_new(board_move);
+        self.best_move = Some(all_move[0]);
+
+        for board_move in all_move.iter() {
+            let board = board.make_move_new(*board_move);
             let eval = -self.internal_search(&board, depth - 1);
 
-            // println!("{:?}, {:?}, {}", self.best_move, self.best_eval, eval);
-
-            if self.best_eval > eval {
-                self.best_eval = cmp::max(eval, self.best_eval);
-                self.best_move = Some(board_move);
+            if let Some(best_move) = self.best_move {
+                println!("{}, {}", best_move, &all_move[0]);
+            } else {
+                println!("_, {}", &all_move[0]);
             }
+
+            if self.best_eval <= eval {
+                self.best_move = Some(*board_move);
+            }
+            self.best_eval = cmp::max(eval, self.best_eval);
         }
 
         self.best_eval
