@@ -159,23 +159,29 @@ impl BasicBot {
             return 0;
         }
 
-        self.best_move = Some(all_move[0]);
+        let mut best_eval = negative_infinity;
+        let mut best_move = Some(all_move[0]);
 
         for board_move in all_move.iter() {
             let board = board.make_move_new(*board_move);
             let eval = -self.internal_search(&board, depth - 1);
 
+            /*
             if let Some(best_move) = self.best_move {
                 println!("{}, {}", best_move, &all_move[0]);
             } else {
                 println!("_, {}", &all_move[0]);
             }
+            */
 
-            if self.best_eval <= eval {
-                self.best_move = Some(*board_move);
+            if best_eval < eval {
+                best_move = Some(*board_move);
             }
-            self.best_eval = cmp::max(eval, self.best_eval);
+            best_eval = cmp::max(eval, best_eval);
         }
+
+        self.best_eval = best_eval;
+        self.best_move = best_move;
 
         self.best_eval
     }
