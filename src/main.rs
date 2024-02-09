@@ -164,6 +164,8 @@ impl BasicBot {
         for board_move in all_move.iter() {
             let board = board.make_move_new(*board_move);
             let eval = -self.internal_search(&board, depth - 1, -beta, -alpha);
+            
+            dbg!(eval, alpha, best_move.is_none(), beta);
 
             if eval >= beta { // alpha beta pruning
                 return beta;
