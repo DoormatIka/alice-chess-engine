@@ -75,8 +75,8 @@ struct BasicBot {
 }
 impl Search for BasicBot {
     fn search(&self, depth: u8) -> (i32, ChessMove) {
-        let best_move: Option<ChessMove> = None;
-        let best_eval = self.internal_search(&self.board, depth, best_move);
+        let mut best_move: Option<ChessMove> = None;
+        let best_eval = self.internal_search(&self.board, depth, &mut best_move);
         (best_eval, best_move.unwrap())
     }
 
@@ -122,7 +122,7 @@ impl BasicBot {
         material
     }
 
-    fn internal_search(&self, board: &Board, depth: u8, mut best_move: Option<ChessMove>) -> i32 {
+    fn internal_search(&mut self, board: &Board, depth: u8, best_move: &mut Option<ChessMove>) -> i32 {
         let negative_infinity = -1000000;
 
         if depth == 0 {
@@ -130,7 +130,7 @@ impl BasicBot {
         }
         
         // generate moves here
-        let (mut capture_moves, mut non_capture_moves) = generate_moves(&self.board);
+        let (mut capture_moves, mut non_capture_moves) = generate_moves(&board);
 
         let mut all_move: Vec<ChessMove> = vec![];
         all_move.append(&mut capture_moves);
@@ -146,12 +146,13 @@ impl BasicBot {
         let mut best_eval = negative_infinity;
 
         for board_move in all_move {
-            let new_board = board.make_move_new(board_move);
-            let eval = -self.internal_search(&new_board, depth - 1, best_move);
+            // currently trying to assign the new board to the self.board
+            self.board = board.make_move_new(board_move);
+            // and using it here
+            let eval = -self.internal_search(&mut self.board, depth - 1, best_move);
 
-            // this just makes the last move the best move
             if eval > best_eval {
-                best_move = Some(board_move);
+                *best_move = Some(board_move);
                 best_eval = cmp::max(eval, best_eval);
             }
         }
