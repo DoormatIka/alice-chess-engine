@@ -17,7 +17,7 @@ fn main() {
     let starting = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     let en_passant = "rnbqkbnr/ppppp1pp/8/8/4Pp2/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1";
 
-    let mut game = Game::from_str(starting).unwrap();
+    let mut game = Game::from_str(black_on_check).unwrap();
     let player_color: Option<Color> = Some(Color::Black);
 
     loop {
@@ -58,13 +58,13 @@ fn main() {
                     }
                 };
             } else {
-                let mut bot = BasicBot { board: board.clone(), best_move: None, best_eval: -99999999 };
+                let mut bot = BasicBot::new(&board);
                 let (eval, chess_move) = bot.search(3);
                 game.make_move(chess_move);
                 println!("Made move with eval {}, {}", eval, chess_move);
             }
         } else {
-            let mut bot = BasicBot { board: board.clone(), best_move: None, best_eval: -9999999 };
+            let mut bot = BasicBot::new(&board);
             let (eval, chess_move) = bot.search(3);
             game.make_move(chess_move);
             println!("Made move with eval {}, {}", eval, chess_move);
@@ -102,6 +102,10 @@ impl Evaluation for BasicBot {
     }
 }
 impl BasicBot {
+    fn new(board: &Board) -> Self {
+        Self { board: board.clone(), best_move: None, best_eval: -9999999 }
+    }
+
     pub fn count_material(&self, board: &Board) -> i32 {
         let white = get_colored_pieces(&board, Color::White);
         let black = get_colored_pieces(&board, Color::Black);
@@ -156,10 +160,10 @@ impl BasicBot {
             let board = board.make_move_new(board_move);
             let eval = -self.internal_search(&board, depth - 1);
 
-            println!("{:?}, {:?}, {}", self.best_move, self.best_eval, eval);
+            // println!("{:?}, {:?}, {}", self.best_move, self.best_eval, eval);
 
-            self.best_eval = cmp::max(eval, self.best_eval);
-            if eval > self.best_eval {
+            if self.best_eval > eval {
+                self.best_eval = cmp::max(eval, self.best_eval);
                 self.best_move = Some(board_move);
             }
         }
