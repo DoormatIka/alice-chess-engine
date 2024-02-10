@@ -94,8 +94,8 @@ impl Search for BasicBot {
         let alpha = -999999; // Negative infinity
         let beta = 999999; // Positive infinity
 
-        let best_eval = self.internal_search(&board, depth, alpha, beta, true);
-        (best_eval, self.best_move.unwrap())
+        let (best_eval, best_move) = self.internal_search(&board, depth, alpha, beta, true);
+        (best_eval, best_move.unwrap())
     }
 }
 impl Evaluation for BasicBot {
@@ -151,72 +151,78 @@ impl BasicBot {
         mut alpha: i32,
         mut beta: i32,
         is_maximizing_player: bool,
-    ) -> i32 {
-        // If leaf node, We return value of node.
+    ) -> (i32, Option<ChessMove>) {
+        println!("Depth: {}, Alpha: {}, Beta: {}, Is Maximizing Player: {}", depth, alpha, beta, is_maximizing_player);
+    
         if depth == 0 {
-            return self.evaluation(board);
+            let evaluation = self.evaluation(board);
+            println!("Leaf node, evaluation: {}", evaluation);
+            return (evaluation, None);
         }
-
-        // She's generating moves here.
+    
         let (mut capture_moves, mut non_capture_moves) = generate_moves(&board);
         let mut all_moves: Vec<ChessMove> = vec![];
         all_moves.append(&mut capture_moves);
         all_moves.append(&mut non_capture_moves);
-
+    
+        println!("Generated moves: {:?}", all_moves);
+    
         if all_moves.len() == 0 {
             if board.checkers().popcnt() != 0 {
-                return -1000000;
+                println!("No moves and in check, returning -1000000");
+                return (-1000000, None);
             }
-            return 0;
+            println!("No moves, returning 0");
+            return (0, None);
         }
-        // End of generating moves.
-
-        // If maximizing player, it will try to maximize the evaluation score.
+    
+        let mut best_move = Some(all_moves[0]); // Store the first move as the best move initially
+    
         if is_maximizing_player {
-            // Initialize best_val to negative infinity.
             let mut best_val = -1000000;
-
-            // Iterate over each possible move.
+            println!("Maximizing player, initial best value: {}", best_val);
+    
             for board_move in all_moves.iter() {
-                // Create a new board with the current move applied.
                 let board = board.make_move_new(*board_move);
-                // Recursively call the internal_search function, reducing the depth by 1 each time and switching the player.
-                // We pass false for is_maximizing_player because we're now considering the opponent's moves, and they will try to minimize the score.
-                let value = -self.internal_search(&board, depth - 1, -beta, -alpha, false);
-                // Update best_val if the current move leads to a higher score.
-                best_val = cmp::max(best_val, value);
-                // Update alpha, which represents the best score that the maximizing player can guarantee at this point.
+                let (value, _) = self.internal_search(&board, depth - 1, alpha, beta, !is_maximizing_player);
+                if value > best_val {
+                    best_val = value;
+                    best_move = Some(*board_move);
+                }
                 alpha = cmp::max(alpha, best_val);
-                // If alpha is greater than or equal to beta, prune the remaining branches.
+    
+                println!("Move: {:?}, Value: {}, Best Value: {}, Alpha: {}", board_move, value, best_val, alpha);
+    
                 if beta <= alpha {
+                    println!("Alpha >= Beta, pruning");
                     break;
                 }
             }
-            best_val
-        // If not maximizing player, it will try to minimize the evaluation score.
+            (best_val, best_move)
         } else {
-            // Initialize best_val to positive infinity.
             let mut best_val = 1000000;
-
-            // Iterate over each possible move.
+            println!("Minimizing player, initial best value: {}", best_val);
+    
             for board_move in all_moves.iter() {
-                // Create a new board with the current move applied.
                 let board = board.make_move_new(*board_move);
-                // Recursively call the internal_search function, reducing the depth by 1 each time and switching the player.
-                // We pass true for is_maximizing_player because we're now considering the opponent's moves, and they will try to maximize the score.
-                let value = -self.internal_search(&board, depth - 1, -beta, -alpha, true);
-                // Update best_val if the current move leads to a lower score.
-                best_val = cmp::min(best_val, value);
-                // Update beta, which represents the best score that the minimizing player can guarantee at this point.
+                let (value, _) = self.internal_search(&board, depth - 1, alpha, beta, !is_maximizing_player);
+                if value < best_val {
+                    best_val = value;
+                    best_move = Some(*board_move);
+                }
                 beta = cmp::min(beta, best_val);
-                // If beta is less than or equal to alpha, prune the remaining branches.
+    
+                println!("Move: {:?}, Value: {}, Best Value: {}, Beta: {}", board_move, value, best_val, beta);
+    
                 if beta <= alpha {
+                    println!("Beta <= Alpha, pruning");
                     break;
                 }
             }
-            best_val
+            (best_val, best_move)
         }
     }
+    
 }
 struct PiecesColored {
     color: Color,
