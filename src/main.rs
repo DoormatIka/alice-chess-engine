@@ -56,13 +56,13 @@ fn main() {
                 };
             } else {
                 let mut bot = BasicBot::new(&board);
-                let (eval, chess_move) = bot.search(7);
+                let (eval, chess_move) = bot.search(3);
                 game.make_move(chess_move);
                 println!("Made move with eval {}, {}", eval, chess_move);
             }
         } else {
             let mut bot = BasicBot::new(&board);
-            let (eval, chess_move) = bot.search(7);
+            let (eval, chess_move) = bot.search(3);
             game.make_move(chess_move);
             println!("Made move with eval {}, {}", eval, chess_move);
         }
@@ -88,10 +88,10 @@ impl Search for BasicBot {
     // external function, interacts with self
     fn search(&mut self, depth: u16) -> (i32, ChessMove) {
         let board = self.board.clone();
-        let alpha = -999999;
-        let beta = -99999;
+        let mut alpha = 0;
+        let mut beta = 0;
 
-        let best_eval = self.internal_search(&board, depth, alpha, beta);
+        let best_eval = self.internal_search(&board, depth, &mut alpha, &mut beta);
         (best_eval, self.best_move.unwrap())
     }
 }
@@ -137,7 +137,7 @@ impl BasicBot {
         material
     }
 
-    fn internal_search(&mut self, board: &Board, depth: u16, mut alpha: i32, beta: i32) -> i32 {
+    fn internal_search(&mut self, board: &Board, depth: u16, alpha: &mut i32, beta: &mut i32) -> i32 {
         let negative_infinity = -1000000;
 
         if depth == 0 {
@@ -163,25 +163,35 @@ impl BasicBot {
 
         for board_move in all_move.iter() {
             let board = board.make_move_new(*board_move);
-            let eval = -self.internal_search(&board, depth - 1, -beta, -alpha);
-        
+
             if let Some(best_move) = best_move {
-                println!("Eval: {}, Alpha: {}, Beta: {}, Best Move: {}, Board Move: {}, Depth: {}", eval, alpha, beta, best_move, board_move, depth);
+                println!("FIRST: Alpha: {}, Beta: {}, Best Move: {}, Board Move: {}, Depth: {}", alpha, beta, best_move, board_move, depth);
             } else {
-                println!("Eval: {}, Alpha: {}, Beta: {}, Best Move: _, Board Move: {}, Depth: {}", eval, alpha, beta, board_move, depth);
+                println!("FIRST: Alpha: {}, Beta: {}, Best Move: _, Board Move: {}, Depth: {}", alpha, beta, board_move, depth);
             }
+
+            let eval = -self.internal_search(&board, depth - 1, &mut -beta.clone(), &mut -alpha.clone());
+        
+
+            if let Some(best_move) = best_move {
+                println!("LAST: Eval: {}, Alpha: {}, Beta: {}, Best Move: {}, Board Move: {}, Depth: {}", eval, alpha, beta, best_move, board_move, depth);
+            } else {
+                println!("LAST: Eval: {}, Alpha: {}, Beta: {}, Best Move: _, Board Move: {}, Depth: {}", eval, alpha, beta, board_move, depth);
+            }
+
+            *alpha = cmp::max(*alpha, eval);
+
             if alpha >= beta {
                 break;
             }
 
-            if eval > alpha {
-                alpha = eval;
+            if eval > *alpha {
+                *alpha = eval;
                 best_move = Some(*board_move);
             }
-            alpha = cmp::max(alpha, eval);
         }
         
-        self.best_eval = alpha;
+        self.best_eval = *alpha;
         self.best_move = best_move;
         
         self.best_eval
