@@ -4,12 +4,12 @@ use peak_alloc::PeakAlloc;
 use std::{str::FromStr, vec};
 
 use crate::bots::bot_traits::Search;
-use crate::bots::chess_bot::BasicBot;
-use crate::move_gen::{generate_moves, get_user_move};
+use crate::bots::basic_bot::BasicBot;
+use crate::moves::move_gen::{generate_moves, get_user_move};
 
 pub mod bots;
 pub mod fen;
-pub mod move_gen;
+pub mod moves;
 pub mod types;
 
 #[global_allocator]

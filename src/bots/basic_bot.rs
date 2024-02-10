@@ -1,5 +1,4 @@
-use crate::bots::bot_traits::Evaluation;
-use crate::move_gen::generate_moves;
+use crate::{bots::bot_traits::Evaluation, moves::move_gen::generate_moves};
 use crate::types::pieces_colored::PiecesColored;
 use chess::{Board, ChessMove, Color};
 use std::cmp;

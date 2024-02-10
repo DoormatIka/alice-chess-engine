@@ -1,6 +1,6 @@
 use chess::{Board, ChessMove};
 
-use crate::bots::chess_bot::BasicBot;
+use crate::bots::basic_bot::BasicBot;
 
 pub trait Search {
     fn search(&mut self, depth: u16) -> (i32, ChessMove);
