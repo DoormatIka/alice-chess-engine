@@ -1,10 +1,13 @@
 use crate::{bots::bot_traits::Evaluation, moves::move_gen::generate_moves};
 use crate::types::pieces_colored::PiecesColored;
+use crate::piece_sq_tables::GamePieceSquare;
+
 use chess::{Board, ChessMove, Color};
 use std::cmp;
 
 pub struct BasicBot {
     pub board: Board,
+    pesto: GamePieceSquare,
 }
 impl BasicBot {
     pub fn new(board: &Board) -> Self {

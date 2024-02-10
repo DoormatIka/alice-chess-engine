@@ -12,6 +12,7 @@ pub mod bots;
 pub mod fen;
 pub mod moves;
 pub mod types;
+pub mod piece_sq_tables;
 
 #[global_allocator]
 static PEAK_ALLOC: PeakAlloc = PeakAlloc;
