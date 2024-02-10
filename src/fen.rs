@@ -24,7 +24,10 @@ pub fn print_board_from_fen(fen: &str, targets: &Vec<ChessMove>, moves: &Vec<Che
                     let num_spaces = character.to_digit(10).unwrap();
                     for _ in 0..num_spaces {
                         let piece = format!(" . ");
-                        if moves.iter().any(|chess_move| chess_move.get_dest().to_index() == square_index) {
+                        if moves
+                            .iter()
+                            .any(|chess_move| chess_move.get_dest().to_index() == square_index)
+                        {
                             line.push_str(&piece.green().to_string());
                         } else {
                             line.push_str(&piece);
@@ -34,17 +37,20 @@ pub fn print_board_from_fen(fen: &str, targets: &Vec<ChessMove>, moves: &Vec<Che
                 }
                 _ => {
                     let piece = format!(" {} ", character);
-                    if targets.iter().any(|chess_move| chess_move.get_dest().to_index() == square_index) {
+                    if targets
+                        .iter()
+                        .any(|chess_move| chess_move.get_dest().to_index() == square_index)
+                    {
                         line.push_str(&piece.red().to_string());
                     } else {
                         line.push_str(&piece);
                     }
                     square_index += 1;
-                },
+                }
             }
             char_index = square_index - (8 * (7 - row_index));
         }
-        println!("{}   {}", 8-row_index, line);
+        println!("{}   {}", 8 - row_index, line);
     }
     println!("\n     a  b  c  d  e  f  g  h");
 }

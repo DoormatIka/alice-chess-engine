@@ -1,9 +1,8 @@
+use std::{cmp, io::stdin, str::FromStr, vec};
 
-use std::{str::FromStr, vec, io::stdin, cmp};
-
+use chess::{BitBoard, Board, BoardStatus, ChessMove, Color, Game, MoveGen, Piece, EMPTY};
 use fen::print_board_from_fen;
 use peak_alloc::PeakAlloc;
-use chess::{MoveGen, EMPTY, Game, ChessMove, BoardStatus, Color, Board, Piece, BitBoard};
 
 pub mod fen;
 
@@ -30,12 +29,16 @@ fn main() {
                 println!("Stalemated / Checkmated.");
                 break;
             }
-            _ => ()
+            _ => (),
         }
 
         let (mut capture_moves, mut non_capture_moves) = generate_moves(&board);
 
-        print_board_from_fen(game.current_position().to_string().as_str(), &capture_moves, &non_capture_moves);
+        print_board_from_fen(
+            game.current_position().to_string().as_str(),
+            &capture_moves,
+            &non_capture_moves,
+        );
 
         let mut all_move: Vec<ChessMove> = vec![];
         all_move.append(&mut capture_moves);
@@ -88,10 +91,10 @@ impl Search for BasicBot {
     // external function, interacts with self
     fn search(&mut self, depth: u16) -> (i32, ChessMove) {
         let board = self.board.clone();
-        let alpha = -999999;
-        let beta = -99999;
+        let alpha = -999999; // Negative infinity
+        let beta = 999999; // Positive infinity
 
-        let best_eval = self.internal_search(&board, depth, alpha, beta);
+        let best_eval = self.internal_search(&board, depth, alpha, beta, true);
         (best_eval, self.best_move.unwrap())
     }
 }
@@ -105,7 +108,11 @@ impl Evaluation for BasicBot {
 }
 impl BasicBot {
     fn new(board: &Board) -> Self {
-        Self { board: board.clone(), best_move: None, best_eval: -9999999 }
+        Self {
+            board: board.clone(),
+            best_move: None,
+            best_eval: -9999999,
+        }
     }
 
     pub fn count_material(&self, board: &Board) -> i32 {
@@ -137,57 +144,80 @@ impl BasicBot {
         material
     }
 
-    fn internal_search(&mut self, board: &Board, depth: u16, mut alpha: i32, beta: i32) -> i32 {
-        let negative_infinity = -1000000;
-
+    fn internal_search(
+        &mut self,
+        board: &Board,
+        depth: u16,
+        mut alpha: i32,
+        mut beta: i32,
+        is_maximizing_player: bool,
+    ) -> i32 {
+        // If leaf node, We return value of node.
         if depth == 0 {
             return self.evaluation(board);
         }
-        
-        // generate moves here
+
+        // She's generating moves here.
         let (mut capture_moves, mut non_capture_moves) = generate_moves(&board);
+        let mut all_moves: Vec<ChessMove> = vec![];
+        all_moves.append(&mut capture_moves);
+        all_moves.append(&mut non_capture_moves);
 
-        let mut all_move: Vec<ChessMove> = vec![];
-        all_move.append(&mut capture_moves);
-        all_move.append(&mut non_capture_moves);
-
-        if all_move.len() == 0 {
+        if all_moves.len() == 0 {
             if board.checkers().popcnt() != 0 {
-                return negative_infinity;
+                return -1000000;
             }
             return 0;
         }
+        // End of generating moves.
 
+        // If maximizing player, it will try to maximize the evaluation score.
+        if is_maximizing_player {
+            // Initialize best_val to negative infinity.
+            let mut best_val = -1000000;
 
-        let mut best_move = None;
-
-        for board_move in all_move.iter() {
-            let board = board.make_move_new(*board_move);
-            let eval = -self.internal_search(&board, depth - 1, -beta, -alpha);
-        
-            if let Some(best_move) = best_move {
-                println!("Eval: {}, Alpha: {}, Beta: {}, Best Move: {}, Board Move: {}, Depth: {}", eval, alpha, beta, best_move, board_move, depth);
-            } else {
-                println!("Eval: {}, Alpha: {}, Beta: {}, Best Move: _, Board Move: {}, Depth: {}", eval, alpha, beta, board_move, depth);
+            // Iterate over each possible move.
+            for board_move in all_moves.iter() {
+                // Create a new board with the current move applied.
+                let board = board.make_move_new(*board_move);
+                // Recursively call the internal_search function, reducing the depth by 1 each time and switching the player.
+                // We pass false for is_maximizing_player because we're now considering the opponent's moves, and they will try to minimize the score.
+                let value = -self.internal_search(&board, depth - 1, -beta, -alpha, false);
+                // Update best_val if the current move leads to a higher score.
+                best_val = cmp::max(best_val, value);
+                // Update alpha, which represents the best score that the maximizing player can guarantee at this point.
+                alpha = cmp::max(alpha, best_val);
+                // If alpha is greater than or equal to beta, prune the remaining branches.
+                if beta <= alpha {
+                    break;
+                }
             }
-            if alpha >= beta {
-                break;
-            }
+            best_val
+        // If not maximizing player, it will try to minimize the evaluation score.
+        } else {
+            // Initialize best_val to positive infinity.
+            let mut best_val = 1000000;
 
-            if eval > alpha {
-                alpha = eval;
-                best_move = Some(*board_move);
+            // Iterate over each possible move.
+            for board_move in all_moves.iter() {
+                // Create a new board with the current move applied.
+                let board = board.make_move_new(*board_move);
+                // Recursively call the internal_search function, reducing the depth by 1 each time and switching the player.
+                // We pass true for is_maximizing_player because we're now considering the opponent's moves, and they will try to maximize the score.
+                let value = -self.internal_search(&board, depth - 1, -beta, -alpha, true);
+                // Update best_val if the current move leads to a lower score.
+                best_val = cmp::min(best_val, value);
+                // Update beta, which represents the best score that the minimizing player can guarantee at this point.
+                beta = cmp::min(beta, best_val);
+                // If beta is less than or equal to alpha, prune the remaining branches.
+                if beta <= alpha {
+                    break;
+                }
             }
-            alpha = cmp::max(alpha, eval);
+            best_val
         }
-        
-        self.best_eval = alpha;
-        self.best_move = best_move;
-        
-        self.best_eval
     }
 }
-
 struct PiecesColored {
     color: Color,
     kings: BitBoard,
@@ -249,14 +279,14 @@ fn get_colored_pieces(board: &Board, color: Color) -> PiecesColored {
     let color_knights = BitBoard::new(black & knights);
     let color_bishops = BitBoard::new(black & bishops);
 
-    PiecesColored { 
-        color, 
-        kings: color_kings, 
-        pawns: color_pawns, 
-        rooks: color_rooks, 
-        queens: color_queens, 
-        knights: color_knights, 
-        bishops: color_bishops, 
+    PiecesColored {
+        color,
+        kings: color_kings,
+        pawns: color_pawns,
+        rooks: color_rooks,
+        queens: color_queens,
+        knights: color_knights,
+        bishops: color_bishops,
     }
 }
 
