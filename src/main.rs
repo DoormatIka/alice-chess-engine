@@ -56,13 +56,13 @@ fn main() {
                 };
             } else {
                 let mut bot = BasicBot::new(&board);
-                let (eval, chess_move) = bot.search(3);
+                let (eval, chess_move) = bot.search(7);
                 game.make_move(chess_move);
                 println!("Made move with eval {}, {}", eval, chess_move);
             }
         } else {
             let mut bot = BasicBot::new(&board);
-            let (eval, chess_move) = bot.search(3);
+            let (eval, chess_move) = bot.search(7);
             game.make_move(chess_move);
             println!("Made move with eval {}, {}", eval, chess_move);
         }
@@ -88,8 +88,8 @@ impl Search for BasicBot {
     // external function, interacts with self
     fn search(&mut self, depth: u16) -> (i32, ChessMove) {
         let board = self.board.clone();
-        let alpha = 0;
-        let beta = 0;
+        let alpha = -999999;
+        let beta = -99999;
 
         let best_eval = self.internal_search(&board, depth, alpha, beta);
         (best_eval, self.best_move.unwrap())
@@ -159,26 +159,29 @@ impl BasicBot {
         }
 
 
-        let mut best_eval = negative_infinity;
         let mut best_move = None;
 
         for board_move in all_move.iter() {
             let board = board.make_move_new(*board_move);
             let eval = -self.internal_search(&board, depth - 1, -beta, -alpha);
         
-        dbg!(&eval, &best_eval, &alpha, &beta, &best_move, &board_move, &depth);
-            if eval > best_eval {
-                best_eval = eval;
-                best_move = Some(*board_move);
+            if let Some(best_move) = best_move {
+                println!("Eval: {}, Alpha: {}, Beta: {}, Best Move: {}, Board Move: {}, Depth: {}", eval, alpha, beta, best_move, board_move, depth);
+            } else {
+                println!("Eval: {}, Alpha: {}, Beta: {}, Best Move: _, Board Move: {}, Depth: {}", eval, alpha, beta, board_move, depth);
             }
-        
-            alpha = cmp::max(alpha, eval);
             if alpha >= beta {
                 break;
             }
+
+            if eval > alpha {
+                alpha = eval;
+                best_move = Some(*board_move);
+            }
+            alpha = cmp::max(alpha, eval);
         }
         
-        self.best_eval = best_eval;
+        self.best_eval = alpha;
         self.best_move = best_move;
         
         self.best_eval
