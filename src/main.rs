@@ -5,6 +5,7 @@ use fen::print_board_from_fen;
 use peak_alloc::PeakAlloc;
 
 pub mod fen;
+pub mod piece_sq_tables;
 
 #[global_allocator]
 static PEAK_ALLOC: PeakAlloc = PeakAlloc;
@@ -235,8 +236,10 @@ impl BasicBot {
             (best_val, best_move)
         }
     }
-    
 }
+
+
+
 struct PiecesColored {
     color: Color,
     kings: BitBoard,
