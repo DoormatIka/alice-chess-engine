@@ -5,7 +5,8 @@ use std::{str::FromStr, vec};
 
 use crate::bots::bot_traits::Search;
 use crate::bots::basic_bot::BasicBot;
-use crate::moves::move_gen::{generate_moves, get_user_move};
+use crate::moves::move_gen::generate_moves;
+use crate::moves::user_move::get_user_move;
 
 pub mod bots;
 pub mod fen;
