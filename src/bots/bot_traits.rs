@@ -30,6 +30,7 @@ impl Evaluation for BasicBot {
         let material = self.evaluate_material_advantage(board);
         let position = self.evaluate_piece_sq_table(board);
 
+        println!("meterial: {}, position: {}", material, position);
 
         material + position as i32
     }

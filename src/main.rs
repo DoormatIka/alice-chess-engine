@@ -21,7 +21,7 @@ fn main() {
     let starting = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     let almost_mate = "6k1/1p3ppp/8/8/8/3q1bP1/5K1P/8 b - - 0 1    ";
 
-    let mut game = Game::from_str(starting).unwrap();
+    let mut game = Game::from_str(almost_mate).unwrap();
     let player_color: Option<Color> = Some(Color::Black);
 
     loop {

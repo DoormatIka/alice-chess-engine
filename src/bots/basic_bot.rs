@@ -31,21 +31,23 @@ impl BasicBot {
             -1
         };
 
-        return eval * perspective;
+        return eval;
     }
 
     pub fn evaluate_piece_sq_table(&self, board: &Board) -> f32 {
         let (white_mg_score, white_eg_score, black_mg_score, black_eg_score) =
             self.calculate_piece_sq_with_board(board); // doesn't work
-        let (mg_score, eg_score) = if board.side_to_move() == Color::White {
+        let (mg_score, eg_score, perspective) = if board.side_to_move() == Color::White {
             (
                 white_mg_score - black_mg_score,
                 white_eg_score - black_eg_score,
+                1
             )
         } else {
             (
                 black_mg_score - white_mg_score,
                 black_eg_score - white_eg_score,
+                -1
             )
         };
 
@@ -53,7 +55,6 @@ impl BasicBot {
         let black_pieces = PiecesColored::get_colored_pieces(board, Color::Black); // works
         let white_material = self.calculate_material(white_pieces); // works
         let black_material = self.calculate_material(black_pieces); // works
-    
 
         let total_material = white_material + black_material;
 
@@ -66,7 +67,7 @@ impl BasicBot {
         let weighted_mg_score = mg_phase * mg_score as f32;
         let weighted_eg_score = eg_phase * eg_score as f32;
 
-        let score = weighted_mg_score + weighted_eg_score;
+        let score = (weighted_mg_score + weighted_eg_score) * perspective as f32;
 
         score
     }
@@ -162,7 +163,6 @@ impl BasicBot {
             
         }
 
-        dbg!(black_eg_score, black_mg_score);
 
         (
             white_mg_score,
