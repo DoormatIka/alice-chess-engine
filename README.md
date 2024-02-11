@@ -12,6 +12,6 @@ Two programmers' second attempt at writing a chess engine.
     - Fail-High
 
 ### Todo
+  - UCI (Needed.)
   - Iterative Deepening
   - Piece-square tables
-  - UCI
