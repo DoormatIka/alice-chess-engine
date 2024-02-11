@@ -27,6 +27,6 @@ impl Evaluation for BasicBot {
     fn evaluation(&self, board: &Board) -> i32 {
         // currently handles quiet moves like shit.
         // if there's no capture moves, then it'll be the first move in the movelist
-        self.count_material(board)
+        self.evaluate_material_advantage(board)
     }
 }

@@ -17,7 +17,7 @@ impl BasicBot {
         }
     }
 
-    pub fn count_material(&self, board: &Board) -> i32 {
+    pub fn evaluate_material_advantage(&self, board: &Board) -> i32 {
         let white = PiecesColored::get_colored_pieces(&board, Color::White);
         let black = PiecesColored::get_colored_pieces(&board, Color::Black);
 
