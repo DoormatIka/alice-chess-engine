@@ -88,6 +88,8 @@ impl BasicBot {
             for sq in 0..64 {
                 let piece = board.piece_on(unsafe { Square::new(sq) });
                 if let Some(piece) = piece {
+                    if let Some(color) = board.color_on(unsafe { Square::new(sq) }) {
+                        if color == Color::White {
                     match piece {
                         Piece::Pawn => {
                             white_mg_score += self.pesto.white.middle_game.pawn_table[sq as usize];
@@ -118,41 +120,46 @@ impl BasicBot {
                     }
                 }
             }
+        }
+            }
         } else {
             for sq in 0..64 {
                 if let Some(piece) = board.piece_on(unsafe { Square::new(sq) }) {
-                    // currently getting black AND white's pieces
-                    dbg!(piece);
-                    match piece {
-                        Piece::Pawn => {
-                            black_mg_score += self.pesto.black.middle_game.pawn_table[sq as usize];
-                            black_eg_score += self.pesto.black.end_game.pawn_table[sq as usize];
-                        }
-                        Piece::King => {
-                            black_mg_score += self.pesto.black.middle_game.king_table[sq as usize];
-                            black_eg_score += self.pesto.black.end_game.king_table[sq as usize];
-                        }
-                        Piece::Queen => {
-                            black_mg_score += self.pesto.black.middle_game.queen_table[sq as usize];
-                            black_eg_score += self.pesto.black.end_game.queen_table[sq as usize];
-                        }
-                        Piece::Rook => {
-                            black_mg_score += self.pesto.black.middle_game.rook_table[sq as usize];
-                            black_eg_score += self.pesto.black.end_game.rook_table[sq as usize];
-                        }
-                        Piece::Bishop => {
-                            black_mg_score +=
-                                self.pesto.black.middle_game.bishop_table[sq as usize];
-                            black_eg_score += self.pesto.black.end_game.bishop_table[sq as usize];
-                        }
-                        Piece::Knight => {
-                            black_mg_score +=
-                                self.pesto.black.middle_game.knight_table[sq as usize];
-                            black_eg_score += self.pesto.black.end_game.knight_table[sq as usize];
+
+                    if let Some(color) = board.color_on(unsafe { Square::new(sq) }) {
+
+                        if color == Color::Black {
+                            match piece {
+                                Piece::Pawn => {
+                                    black_mg_score += self.pesto.black.middle_game.pawn_table[sq as usize];
+                                    black_eg_score += self.pesto.black.end_game.pawn_table[sq as usize];
+                                }
+                                Piece::King => {
+                                    black_mg_score += self.pesto.black.middle_game.king_table[sq as usize];
+                                    black_eg_score += self.pesto.black.end_game.king_table[sq as usize];
+                                }
+                                Piece::Queen => {
+                                    black_mg_score += self.pesto.black.middle_game.queen_table[sq as usize];
+                                    black_eg_score += self.pesto.black.end_game.queen_table[sq as usize];
+                                }
+                                Piece::Rook => {
+                                    black_mg_score += self.pesto.black.middle_game.rook_table[sq as usize];
+                                    black_eg_score += self.pesto.black.end_game.rook_table[sq as usize];
+                                }
+                                Piece::Bishop => {
+                                    black_mg_score += self.pesto.black.middle_game.bishop_table[sq as usize];
+                                    black_eg_score += self.pesto.black.end_game.bishop_table[sq as usize];
+                                }
+                                Piece::Knight => {
+                                    black_mg_score += self.pesto.black.middle_game.knight_table[sq as usize];
+                                    black_eg_score += self.pesto.black.end_game.knight_table[sq as usize];
+                                }
+                            }
                         }
                     }
                 }
             }
+            
         }
 
         dbg!(black_eg_score, black_mg_score);
