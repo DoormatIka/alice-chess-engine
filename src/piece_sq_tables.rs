@@ -106,24 +106,6 @@ pub fn create_pesto_piece_sqaure() -> PhaseTableColor {
         21, 23, 16, 7, -9, -27, -11, 4, 13, 14, 4, -5, -17, -53, -34, -21, -11, -28, -14, -24, -43,
     ];
 
-    let phase_table = PhaseTable {
-        middle_game: PieceTable {
-            pawn_table: mg_pawn_table,
-            knight_table: mg_knight_table,
-            bishop_table: mg_bishop_table,
-            rook_table: mg_rook_table,
-            queen_table: mg_queen_table,
-            king_table: mg_king_table,
-        },
-        end_game: PieceTable {
-            pawn_table: eg_pawn_table,
-            knight_table: eg_knight_table,
-            bishop_table: eg_bishop_table,
-            rook_table: eg_rook_table,
-            queen_table: eg_queen_table,
-            king_table: eg_king_table,
-        },
-    };
 
     let mg_value_pawn = 82;
     let mg_value_knight = 337;

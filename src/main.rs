@@ -67,13 +67,13 @@ fn main() {
                 };
             } else {
                 let mut bot = BasicBot::new(&board);
-                let (eval, chess_move) = bot.search(6);
+                let (eval, chess_move) = bot.search(3);
                 game.make_move(chess_move);
                 println!("Made move with eval {}, {}", eval, chess_move);
             }
         } else {
             let mut bot = BasicBot::new(&board);
-            let (eval, chess_move) = bot.search(6);
+            let (eval, chess_move) = bot.search(3);
             game.make_move(chess_move);
             println!("Made move with eval {}, {}", eval, chess_move);
         }

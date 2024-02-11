@@ -36,7 +36,7 @@ impl BasicBot {
 
     pub fn evaluate_piece_sq_table(&self, board: &Board) -> f32 {
         let (white_mg_score, white_eg_score, black_mg_score, black_eg_score) =
-            self.calculate_piece_sq_with_board(board);
+            self.calculate_piece_sq_with_board(board); // doesn't work
         let (mg_score, eg_score) = if board.side_to_move() == Color::White {
             (
                 white_mg_score - black_mg_score,
@@ -49,24 +49,25 @@ impl BasicBot {
             )
         };
 
-        let white_pieces = PiecesColored::get_colored_pieces(board, Color::White);
-        let black_pieces = PiecesColored::get_colored_pieces(board, Color::Black);
-        let white_material = self.calculate_material(white_pieces);
-        let black_material = self.calculate_material(black_pieces);
+        let white_pieces = PiecesColored::get_colored_pieces(board, Color::White); // works
+        let black_pieces = PiecesColored::get_colored_pieces(board, Color::Black); // works
+        let white_material = self.calculate_material(white_pieces); // works
+        let black_material = self.calculate_material(black_pieces); // works
+    
+
         let total_material = white_material + black_material;
 
         let max_material = 7800.0; // Maximum possible material at the start of the game
         let game_phase = total_material as f32 / max_material;
 
-        let mg_phase = 1.0 - game_phase;
-        let eg_phase = game_phase;
+        let mg_phase = game_phase;
+        let eg_phase = game_phase - 1.0;
 
         let weighted_mg_score = mg_phase * mg_score as f32;
         let weighted_eg_score = eg_phase * eg_score as f32;
 
         let score = weighted_mg_score + weighted_eg_score;
 
-        dbg!(score);
         score
     }
 
@@ -85,7 +86,8 @@ impl BasicBot {
 
         if board.side_to_move() == Color::White {
             for sq in 0..64 {
-                if let Some(piece) = board.piece_on(unsafe { Square::new(sq) }) {
+                let piece = board.piece_on(unsafe { Square::new(sq) });
+                if let Some(piece) = piece {
                     match piece {
                         Piece::Pawn => {
                             white_mg_score += self.pesto.white.middle_game.pawn_table[sq as usize];
@@ -119,6 +121,8 @@ impl BasicBot {
         } else {
             for sq in 0..64 {
                 if let Some(piece) = board.piece_on(unsafe { Square::new(sq) }) {
+                    // currently getting black AND white's pieces
+                    dbg!(piece);
                     match piece {
                         Piece::Pawn => {
                             black_mg_score += self.pesto.black.middle_game.pawn_table[sq as usize];
@@ -150,6 +154,8 @@ impl BasicBot {
                 }
             }
         }
+
+        dbg!(black_eg_score, black_mg_score);
 
         (
             white_mg_score,
