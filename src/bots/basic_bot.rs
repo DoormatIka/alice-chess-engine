@@ -1,18 +1,19 @@
 use crate::{bots::bot_traits::Evaluation, moves::move_gen::generate_moves};
 use crate::types::pieces_colored::PiecesColored;
-use crate::piece_sq_tables::GamePieceSquare;
+use crate::piece_sq_tables::{PhaseTableColor, create_pesto_piece_sqaure};
 
-use chess::{Board, ChessMove, Color};
+use chess::{Board, ChessMove, Color, Square, Piece};
 use std::cmp;
 
 pub struct BasicBot {
     pub board: Board,
-    pesto: GamePieceSquare,
+    pesto: PhaseTableColor,
 }
 impl BasicBot {
     pub fn new(board: &Board) -> Self {
         Self {
             board: board.clone(),
+            pesto: create_pesto_piece_sqaure(),
         }
     }
 
@@ -33,7 +34,105 @@ impl BasicBot {
         return eval * perspective;
     }
 
-    pub fn calculate_material(&self, pieces: PiecesColored) -> u32 {
+    pub fn evaluate_piece_sq_table(&self, board: &Board) -> f32 {
+        // can you put in the opening => endgame adjusting thing
+        //
+        // it's somewhere here: https://www.chessprogramming.org/PeSTO%27s_Evaluation_Function
+        //      at variable gamePhase
+        let (white_mg_score, white_eg_score, black_mg_score, black_eg_score) = self.calculate_piece_sq_with_board(board);
+        let (mg_score, eg_score) = if board.side_to_move() == Color::White {
+            (white_mg_score - black_mg_score, white_eg_score - black_eg_score)
+        } else {
+            (black_mg_score - white_mg_score, black_eg_score - white_eg_score)
+        };
+
+        // remove this after implementing it!
+        todo!("Missing slider to tell if its in the mid game or end game");
+        (mg_score + eg_score) as f32 / 24.0
+    }
+
+    /**
+     * Calculates the pieces in the board.
+     *
+     * (white_mg_score, white_eg_score, black_mg_score, black_eg_score) is the return type.
+     * im sorry for using tuples again.
+     */
+    fn calculate_piece_sq_with_board(&self, board: &Board) -> (i16, i16, i16, i16) {
+        let mut white_mg_score = 0;
+        let mut white_eg_score = 0;
+        let mut black_mg_score = 0;
+        let mut black_eg_score = 0;
+
+        if board.side_to_move() == Color::White {
+            for sq in 0..64 {
+                if let Some(piece) = board.piece_on(unsafe { Square::new(sq) }) {
+                    match piece {
+                        Piece::Pawn => {
+                            white_mg_score += self.pesto.white.middle_game.pawn_table[sq as usize];
+                            white_eg_score += self.pesto.white.end_game.pawn_table[sq as usize];
+                        },
+                        Piece::King => {
+                            white_mg_score += self.pesto.white.middle_game.king_table[sq as usize];
+                            white_eg_score += self.pesto.white.end_game.king_table[sq as usize];
+                        },
+                        Piece::Queen => {
+                            white_mg_score += self.pesto.white.middle_game.queen_table[sq as usize];
+                            white_eg_score += self.pesto.white.end_game.queen_table[sq as usize];
+                        },
+                        Piece::Rook => {
+                            white_mg_score += self.pesto.white.middle_game.rook_table[sq as usize];
+                            white_eg_score += self.pesto.white.end_game.rook_table[sq as usize];
+                        },
+                        Piece::Bishop => {
+                            white_mg_score += self.pesto.white.middle_game.bishop_table[sq as usize];
+                            white_eg_score += self.pesto.white.end_game.bishop_table[sq as usize];
+                        },
+                        Piece::Knight => {
+                            white_mg_score += self.pesto.white.middle_game.knight_table[sq as usize];
+                            white_eg_score += self.pesto.white.end_game.knight_table[sq as usize];
+                        },
+                    }
+                } 
+            }
+            
+        } else {
+            for sq in 0..64 {
+                if let Some(piece) = board.piece_on(unsafe { Square::new(sq) }) {
+                    match piece {
+                        Piece::Pawn => {
+                            black_mg_score += self.pesto.black.middle_game.pawn_table[sq as usize];
+                            black_eg_score += self.pesto.black.end_game.pawn_table[sq as usize];
+                        },
+                        Piece::King => {
+                            black_mg_score += self.pesto.black.middle_game.king_table[sq as usize];
+                            black_eg_score += self.pesto.black.end_game.king_table[sq as usize];
+                        },
+                        Piece::Queen => {
+                            black_mg_score += self.pesto.black.middle_game.queen_table[sq as usize];
+                            black_eg_score += self.pesto.black.end_game.queen_table[sq as usize];
+                        },
+                        Piece::Rook => {
+                            black_mg_score += self.pesto.black.middle_game.rook_table[sq as usize];
+                            black_eg_score += self.pesto.black.end_game.rook_table[sq as usize];
+                        },
+                        Piece::Bishop => {
+                            black_mg_score += self.pesto.black.middle_game.bishop_table[sq as usize];
+                            black_eg_score += self.pesto.black.end_game.bishop_table[sq as usize];
+                        },
+                        Piece::Knight => {
+                            black_mg_score += self.pesto.black.middle_game.knight_table[sq as usize];
+                            black_eg_score += self.pesto.black.end_game.knight_table[sq as usize];
+                        },
+                    }
+                } 
+            }
+
+        }
+
+        (white_mg_score, white_eg_score, black_mg_score, black_eg_score)
+    }
+
+    fn calculate_material(&self, pieces: PiecesColored) -> u32 {
         let mut material = 0;
 
         material += pieces.pawns.popcnt() * 100;
