@@ -3,16 +3,16 @@ use fen::print_board_from_fen;
 use peak_alloc::PeakAlloc;
 use std::{str::FromStr, vec};
 
-use crate::bots::bot_traits::Search;
 use crate::bots::basic_bot::BasicBot;
+use crate::bots::bot_traits::Search;
 use crate::moves::move_gen::generate_moves;
 use crate::moves::user_move::get_user_move;
 
 pub mod bots;
 pub mod fen;
 pub mod moves;
-pub mod types;
 pub mod piece_sq_tables;
+pub mod types;
 
 #[global_allocator]
 static PEAK_ALLOC: PeakAlloc = PeakAlloc;

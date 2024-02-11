@@ -24,4 +24,3 @@ pub fn generate_moves(board: &Board) -> (Vec<ChessMove>, Vec<ChessMove>) {
 
     return (capture_moves, non_capture_moves);
 }
-
