@@ -10,8 +10,9 @@ Two programmers' second attempt at writing a chess engine.
     - Alpha-beta Pruning
     - Material Counting
     - Fail-High
+    - Piece-square tables
 
 ### Todo
+  - Switch to cozy-chess due to a bug in chess
   - UCI (Needed.)
   - Iterative Deepening
-  - Piece-square tables
