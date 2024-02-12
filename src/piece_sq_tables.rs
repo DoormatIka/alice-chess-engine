@@ -1,42 +1,19 @@
-#[derive(Debug)]
-pub struct PieceTable {
-    pub pawn_table: [i16; 64],
-    pub knight_table: [i16; 64],
-    pub bishop_table: [i16; 64],
-    pub rook_table: [i16; 64],
-    pub queen_table: [i16; 64],
-    pub king_table: [i16; 64],
+
+pub struct ColoredTables {
+    pub white: Table,
+    pub black: Table,
 }
 
-impl Default for PieceTable {
-    fn default() -> Self {
-        Self {
-            pawn_table: [0; 64],
-            knight_table: [0; 64],
-            bishop_table: [0; 64],
-            rook_table: [0; 64],
-            queen_table: [0; 64],
-            king_table: [0; 64],
-        }
-    }
-}
-
-#[derive(Debug, Default)]
-pub struct PhaseTable {
-    pub middle_game: PieceTable,
-    pub end_game: PieceTable,
-}
-
-#[derive(Debug, Default)]
-pub struct PhaseTableColor {
-    pub black: PhaseTable,
-    pub white: PhaseTable,
-}
+/**
+ * Supposed to be used for "endgame" or "middlegame" tables.
+ * There are 6 items to signify the 6 pieces.
+ */
+type Table = [[i32; 64]; 6];
 
 /**
  * https://www.chessprogramming.org/PeSTO%27s_Evaluation_Function
  */
-pub fn create_pesto_piece_sqaure() -> PhaseTableColor {
+pub fn create_pesto_piece_sqaure() -> (ColoredTables, ColoredTables) {
     let mg_pawn_table = [
         0, 0, 0, 0, 0, 0, 0, 0, 98, 134, 61, 95, 68, 126, 34, -11, -6, 7, 26, 31, 65, 56, 25, -20,
         -14, 13, 6, 21, 23, 12, 17, -23, -27, -2, -5, 12, 17, 6, 10, -25, -26, -4, -4, -10, 3, 3,
@@ -106,55 +83,46 @@ pub fn create_pesto_piece_sqaure() -> PhaseTableColor {
         21, 23, 16, 7, -9, -27, -11, 4, 13, 14, 4, -5, -17, -53, -34, -21, -11, -28, -14, -24, -43,
     ];
 
+    // pawn, knight, bishop, rook, queen, king
+    let mg_value = [82, 337, 365, 477, 1025, 0];
+    let eg_value = [94, 281, 297, 512, 936, 0];
 
-    let mg_value_pawn = 82;
-    let mg_value_knight = 337;
-    let mg_value_bishop = 365;
-    let mg_value_rook = 477;
-    let mg_value_queen = 1025;
-    let mg_value_king = 0;
+    let eg_pesto_table: Table = [
+        eg_pawn_table,
+        eg_knight_table,
+        eg_bishop_table,
+        eg_rook_table,
+        eg_queen_table,
+        eg_king_table,
+    ];
+    let mg_pesto_table: Table = [
+        mg_pawn_table,
+        mg_knight_table,
+        mg_bishop_table,
+        mg_rook_table,
+        mg_queen_table,
+        mg_king_table,
+    ];
+    
+    let mut white_mg_table: Table = [[0; 64]; 6];
+    let mut white_eg_table: Table = [[0; 64]; 6];
+    let mut black_mg_table: Table = [[0; 64]; 6];
+    let mut black_eg_table: Table = [[0; 64]; 6];
 
-    let eg_value_pawn = 94;
-    let eg_value_knight = 281;
-    let eg_value_bishop = 297;
-    let eg_value_rook = 512;
-    let eg_value_queen = 936;
-    let eg_value_king = 0;
+    for piece in 0..6 {
+        for sq in 0..64 {
+            let rev_sq = 63 - sq;
 
-    let mut phase_table: PhaseTableColor = Default::default();
+            white_mg_table[piece][sq] = mg_value[piece] + mg_pesto_table[piece][sq];
+            white_eg_table[piece][sq] = eg_value[piece] + eg_pesto_table[piece][sq];
 
-    for sq in 0..64 {
-        phase_table.white.middle_game.pawn_table[sq] += mg_value_pawn + mg_pawn_table[sq];
-        phase_table.white.middle_game.knight_table[sq] += mg_value_knight + mg_knight_table[sq];
-        phase_table.white.middle_game.bishop_table[sq] += mg_value_bishop + mg_bishop_table[sq];
-        phase_table.white.middle_game.rook_table[sq] += mg_value_rook + mg_rook_table[sq];
-        phase_table.white.middle_game.queen_table[sq] += mg_value_queen + mg_queen_table[sq];
-        phase_table.white.middle_game.king_table[sq] += mg_value_king + mg_king_table[sq];
-
-        phase_table.white.end_game.pawn_table[sq] += eg_value_pawn + eg_pawn_table[sq];
-        phase_table.white.end_game.knight_table[sq] += eg_value_knight + eg_knight_table[sq];
-        phase_table.white.end_game.bishop_table[sq] += eg_value_bishop + eg_bishop_table[sq];
-        phase_table.white.end_game.rook_table[sq] += eg_value_rook + eg_rook_table[sq];
-        phase_table.white.end_game.queen_table[sq] += eg_value_queen + eg_queen_table[sq];
-        phase_table.white.end_game.king_table[sq] += eg_value_king + eg_king_table[sq];
-    }
-    for sq in 0..64 {
-        let rev_sq = 63 - sq;
-        // black's perspective = white's reversed perspective
-        phase_table.black.middle_game.pawn_table[rev_sq] += mg_value_pawn + mg_pawn_table[rev_sq];
-        phase_table.black.middle_game.knight_table[rev_sq] += mg_value_knight + mg_knight_table[rev_sq];
-        phase_table.black.middle_game.bishop_table[rev_sq] += mg_value_bishop + mg_bishop_table[rev_sq];
-        phase_table.black.middle_game.rook_table[rev_sq] += mg_value_rook + mg_rook_table[rev_sq];
-        phase_table.black.middle_game.queen_table[rev_sq] += mg_value_queen + mg_queen_table[rev_sq];
-        phase_table.black.middle_game.king_table[rev_sq] += mg_value_king + mg_king_table[rev_sq];
-
-        phase_table.black.end_game.pawn_table[rev_sq] += eg_value_pawn + eg_pawn_table[rev_sq];
-        phase_table.black.end_game.knight_table[rev_sq] += eg_value_knight + eg_knight_table[rev_sq];
-        phase_table.black.end_game.bishop_table[rev_sq] += eg_value_bishop + eg_bishop_table[rev_sq];
-        phase_table.black.end_game.rook_table[rev_sq] += eg_value_rook + eg_rook_table[rev_sq];
-        phase_table.black.end_game.queen_table[rev_sq] += eg_value_queen + eg_queen_table[rev_sq];
-        phase_table.black.end_game.king_table[rev_sq] += eg_value_king + eg_king_table[rev_sq];
+            black_mg_table[piece][rev_sq] = mg_value[piece] + mg_pesto_table[piece][rev_sq];
+            black_eg_table[piece][rev_sq] = eg_value[piece] + eg_pesto_table[piece][rev_sq];
+        }
     }
 
-    phase_table
+    ( 
+        ColoredTables { white: white_mg_table, black: black_mg_table },
+        ColoredTables { white: white_eg_table, black: black_eg_table }
+    )
 }
