@@ -1,3 +1,6 @@
+
+extern crate vampirc_uci;
+
 use chess::{BoardStatus, ChessMove, Color, Game};
 use fen::print_board_from_fen;
 use peak_alloc::PeakAlloc;
@@ -13,11 +16,15 @@ pub mod fen;
 pub mod moves;
 pub mod piece_sq_tables;
 pub mod types;
+pub mod uci;
 
 #[global_allocator]
 static PEAK_ALLOC: PeakAlloc = PeakAlloc;
 
-fn main() {
+/**
+ * Move this to a separate thread.
+ */
+fn game() {
     let starting = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     let almost_mate = "6k1/1p3ppp/8/8/8/3q1bP1/5K1P/8 b - - 0 1    ";
 
@@ -33,8 +40,12 @@ fn main() {
         }
 
         match board.status() {
-            BoardStatus::Stalemate | BoardStatus::Checkmate => {
-                println!("Stalemated / Checkmated.");
+            BoardStatus::Stalemate => {
+                println!("Stalemated");
+                break;
+            }
+            BoardStatus::Checkmate => {
+                println!("Stalemated");
                 break;
             }
             _ => (),
@@ -67,13 +78,13 @@ fn main() {
                 };
             } else {
                 let mut bot = BasicBot::new(&board);
-                let (eval, chess_move) = bot.search(3);
+                let (eval, chess_move) = bot.search(4);
                 game.make_move(chess_move);
                 println!("Made move with eval {}, {}", eval, chess_move);
             }
         } else {
             let mut bot = BasicBot::new(&board);
-            let (eval, chess_move) = bot.search(3);
+            let (eval, chess_move) = bot.search(4);
             game.make_move(chess_move);
             println!("Made move with eval {}, {}", eval, chess_move);
         }
@@ -81,4 +92,8 @@ fn main() {
         let peak_mem = PEAK_ALLOC.peak_usage_as_kb();
         println!("The max memory that was used: {}kb", peak_mem);
     }
+}
+
+fn main() {
+    game();
 }

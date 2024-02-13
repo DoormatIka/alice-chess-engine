@@ -176,11 +176,13 @@ impl BasicBot {
                 let (eval, _) =
                     self.internal_search(&board, depth - 1, alpha, beta, !is_maximizing_player);
 
+                /*
                 if eval > beta {
                     // assuming the opponent would never let the player reach this position
                     //      i.e: "failing high"
                     return (beta, best_move);
                 }
+                */
 
                 if eval > best_val {
                     best_val = eval;
@@ -205,6 +207,7 @@ impl BasicBot {
                 let (eval, _) =
                     self.internal_search(&board, depth - 1, alpha, beta, !is_maximizing_player);
 
+                /*
                 if eval < alpha {
                     // assuming the opponent would never let the player reach this position
                     //      i.e: "failing high"
@@ -212,6 +215,7 @@ impl BasicBot {
                     // same as the maximizing player but just in reverse.
                     return (alpha, best_move);
                 }
+                */
 
                 if eval < best_val {
                     best_val = eval;
