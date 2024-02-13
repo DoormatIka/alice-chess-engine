@@ -1,158 +1,165 @@
 
 extern crate vampirc_uci;
 
-use chess::{BoardStatus, ChessMove, Color, Game};
-use fen::print_board_from_fen;
 use peak_alloc::PeakAlloc;
+use std::fmt::Display;
 use std::time::Duration;
-use std::{str::FromStr, vec};
-use vampirc_uci::{parse, UciMove, UciMessage};
+use vampirc_uci::{parse, UciMove, UciMessage, UciTimeControl, UciSearchControl};
 
-use crate::bots::basic_bot::BasicBot;
-use crate::bots::bot_traits::Search;
-use crate::moves::move_gen::generate_moves;
-use crate::moves::user_move::get_user_move;
-
-use std::sync::mpsc::{self, Sender, Receiver};
+use std::sync::mpsc::{self, Sender, Receiver, TryRecvError};
 use std::io::stdin;
 use std::thread;
-use std::sync::{Mutex, Arc};
+use std::sync::{Mutex, Arc, RwLock};
 
 pub mod bots;
 pub mod fen;
 pub mod moves;
 pub mod piece_sq_tables;
 pub mod types;
-pub mod uci;
+pub mod game;
 
 #[global_allocator]
 static PEAK_ALLOC: PeakAlloc = PeakAlloc;
 
 /**
- * Move this to a separate thread.
+ * For the write thread to get.
  */
-fn game(fen: &str) {
-    let mut game = Game::from_str(fen).unwrap();
-    let player_color: Option<Color> = Some(Color::Black);
+enum Command {
+    // name
+    UciOk(String),
+}
 
-    let board = game.current_position();
-
-    if game.can_declare_draw() {
-        println!("Stalemated by three-fold repetition.");
-        return;
-    }
-
-    match board.status() {
-        BoardStatus::Stalemate => {
-            println!("Stalemated");
-            return;
+impl Display for Command {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Command::UciOk(name) => write!(f, "{}", name),
         }
-        BoardStatus::Checkmate => {
-            println!("Stalemated");
-            return;
-        }
-        _ => (),
+        
     }
-
-    let (mut capture_moves, mut non_capture_moves) = generate_moves(&board);
-
-    print_board_from_fen(
-        game.current_position().to_string().as_str(),
-        &capture_moves,
-        &non_capture_moves,
-    );
-
-    let mut all_move: Vec<ChessMove> = vec![];
-    all_move.append(&mut capture_moves);
-    all_move.append(&mut non_capture_moves);
-
-    if let Some(player_color) = player_color {
-        if game.side_to_move() == player_color {
-            for chess_move in all_move {
-                print!("{} ", chess_move);
-            }
-            let chess_move = get_user_move(&board);
-            match chess_move {
-                Ok(chess_move) => game.make_move(chess_move),
-                Err(err) => {
-                    println!("{}", err);
-                    return;
-                }
-            };
-        } else {
-            let mut bot = BasicBot::new(&board);
-            let (eval, chess_move) = bot.search(4);
-            game.make_move(chess_move);
-            println!("Made move with eval {}, {}", eval, chess_move);
-        }
-    } else {
-        let mut bot = BasicBot::new(&board);
-        let (eval, chess_move) = bot.search(4);
-        game.make_move(chess_move);
-        println!("Made move with eval {}, {}", eval, chess_move);
-    }
-
-    let peak_mem = PEAK_ALLOC.peak_usage_as_kb();
-    println!("The max memory that was used: {}kb", peak_mem);
 }
 
 fn main() {
     let starting = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     let almost_mate = "6k1/1p3ppp/8/8/8/3q1bP1/5K1P/8 b - - 0 1    ";
 
-    let (output_tx, output_rx): (Sender<String>, Receiver<String>) = mpsc::channel();
-    let (input_tx, input_rx): (Sender<String>, Receiver<String>) = mpsc::channel();
-    let is_ready = Arc::new(Mutex::new(true));
-    
+    let (output_tx, output_rx): (Sender<Command>, Receiver<Command>) = mpsc::channel();
+    let (input_tx, input_rx): (Sender<UciMessage>, Receiver<UciMessage>) = mpsc::channel();
+
+    let is_ready = Arc::new(RwLock::new(true));
     let out_ready = Arc::clone(&is_ready);
 
-    thread::spawn(move || {
-        loop {
-            let out = output_rx.recv().expect("Failed to recieve from main thread.");
-            *out_ready.lock().unwrap() = false;
-            thread::sleep(Duration::from_secs(2));
-            *out_ready.lock().unwrap() = true;
-            println!("Output thread: {}", out);
-        }
-    });
+    // INPUT
     thread::spawn(move || {
         loop {
             let mut input = String::new();
             stdin().read_line(&mut input).expect("Failed to read line");
-            input_tx.send(input).expect("Failed to send input to main thread.");
-            /*
-            let uci = parse(input.as_str());
 
+            let uci = parse(input.as_str());
             for command in uci {
                 input_tx.send(command).expect("Failed to send input to main thread.")
             }
-            */
         }
     });
 
-    // game(starting);
+    // OUTPUT
+    thread::spawn(move || {
+        loop {
+            match output_rx.try_recv() {
+                Ok(out) => {
+                    *out_ready.write().unwrap() = false;
+                    match out {
+                        Command::UciOk(ready) => {
+                            thread::sleep(Duration::from_secs(2));
+                            println!("uciok");
+                        },
+                    }
+                    *out_ready.write().unwrap() = true;
+                },
+                Err(err) => {
+                    match err {
+                        TryRecvError::Disconnected => panic!("Disconnected from the main thread!"),
+                        _ => {},
+                    }
+                },
+            }
+        }
+    });
+
 
     loop {
         let input = input_rx.recv().expect("Failed to recieve from input thread.");
 
-        if *is_ready.lock().unwrap() {
-            output_tx.send(format!("Recieved: {}", input)).expect("Failed to send to output_tx");
-        } else {
-            println!("Main thread: Not ready yet!");
-        }
-
-        /*
         match input {
+            // switches the executable from not UCI to UCI-mode
+            UciMessage::Uci => {
+                output_tx.send(Command::UciOk(String::from("Cirno")))
+            },
+
+            // can be used by the GUI to check if the engine is ready or online
+            // also used when the GUI send a LOT of commands and will take time to complete
             UciMessage::IsReady => {
-                let is_ready = if *is_ready.lock().unwrap() {
-                    "ready"
+                if *is_ready.read().unwrap() {
+                    println!("{}", UciMessage::ReadyOk);
                 } else {
-                    "not ready"
-                };
-                println!("{}", is_ready);
+                    println!("readynotok (this is not standard UCI)");
+                }
+                Ok(())
+            },
+
+            // not supported, use position startpos moves e2e4 ... instead.
+            // https://stackoverflow.com/questions/56528420/basic-questions-on-uci-engine-ucinewgame-and-multiple-clients
+            UciMessage::UciNewGame => {
+                Ok(())
             }
-            _ => {},
-        }
-        */
+            
+            // sets up the board with a fen string and some moves
+            //
+            // btw, this is where "position startpos moves" will go to
+            UciMessage::Position { startpos, fen, moves } => { Ok(()) },
+            
+            // allows the engine to start calculating on current position
+            UciMessage::Go { time_control, search_control } => {
+                if let Some(time_control) = time_control {
+                    match time_control {
+                        // the act of thinking during the opponent's turn.
+                        // we have separate threads so this should be easy to implement.
+                        //      however, i don't really see a gain with 
+                        //      pondering (with the techniques rn), so no thanks.
+                        // 
+                        // (opinion)
+                        // also pondering can only be worth it *if* 
+                        //      the engine & player is on the same level.
+                        //      since pondering searches through the tree and does a null-move (?)
+                        //      and it only becomes worth if the player plays the expected move.
+                        // https://www.chessprogramming.org/Pondering
+                        UciTimeControl::Ponder => (),
+
+                        // Search until the "stop" command.
+                        // Cannot be implemented at the moment.
+                        UciTimeControl::Infinite => (),
+
+                        // Search exactly for x milliseconds.
+                        // Cannot be implemented at the moment.
+                        UciTimeControl::MoveTime(_time) => (),
+
+                        // Notifies the engine of how much time there is left.
+                        UciTimeControl::TimeLeft { .. } => (),
+                    };
+                };
+                if let Some(search_control) = search_control {
+                    search_control.depth; // the only supported option we have.
+                };
+                Ok(()) 
+            }
+            // stops all calculations.
+            UciMessage::Stop => { Ok(()) }
+            _ => {
+                println!("Invalid command.");
+                Ok(())
+            },
+        }.expect("Main thread can't send to output/process thread");
+        
+        // let peak_mem = PEAK_ALLOC.peak_usage_as_kb();
+        // println!("The max memory that was used: {}kb", peak_mem);
     }
 }
