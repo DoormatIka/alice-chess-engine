@@ -54,16 +54,20 @@ static PEAK_ALLOC: PeakAlloc = PeakAlloc;
 
 fn output_thread(out: UciMessage, toggle_ready_ok: &Arc<RwLock<bool>>) {
     match out {
-        UciMessage::UciOk => {
+        UciMessage::Uci => {
             println!("id name Cirno");
             println!("id author twoleaflotus");
-            println!("uciok");
+            println!("{}", UciMessage::UciOk);
         },
 
+        // can be used by the GUI to check if the engine is ready or online
+        // also used when the GUI send a LOT of commands and will take time to complete
         UciMessage::IsReady => {
             *toggle_ready_ok.write().unwrap() = true;
         },
 
+        // sets up the board with a fen string and some moves
+        // btw, this is where "position startpos moves" will go to
         UciMessage::Position { startpos, fen, moves } => {
 
         }
@@ -113,13 +117,11 @@ fn output_thread(out: UciMessage, toggle_ready_ok: &Arc<RwLock<bool>>) {
                     };
 
                     for depth in 0..depth {
-                        // pull this out from the search function in basic bot
+                        // put this in to the search function in basic bot
                         let depth = UciInfoAttribute::Depth(depth);
                         let pv = UciInfoAttribute::Pv(vec![chess_move]);
                         let nodes = UciInfoAttribute::Nodes(bot.get_nodes_per_second() as u64);
                         println!("{}", UciMessage::Info(vec![depth, pv, nodes]));
-
-                        thread::sleep(Duration::from_millis(200));
                     }
                     let best_move = UciMessage::best_move(chess_move);
                     println!("{}", best_move);
@@ -172,15 +174,11 @@ fn main() {
         let uci_message = input_rx.recv().expect("Failed to recieve from input thread.");
 
         match uci_message {
-            // switches the executable from not UCI to UCI-mode
-            UciMessage::Uci => {
-                output_tx.send(UciMessage::UciOk)
-            },
-
-            // can be used by the GUI to check if the engine is ready or online
-            // also used when the GUI send a LOT of commands and will take time to complete
-            UciMessage::IsReady => {
-                // readyok will now be sent if the chess engine is ready again.
+            UciMessage::Uci 
+                | UciMessage::IsReady
+                | UciMessage::Position { .. }
+                | UciMessage::Go { .. }
+                | UciMessage::Stop => {
                 output_tx.send(uci_message)
             },
 
@@ -189,18 +187,6 @@ fn main() {
             UciMessage::UciNewGame => {
                 Ok(())
             }
-            
-            // sets up the board with a fen string and some moves
-            // btw, this is where "position startpos moves" will go to
-            UciMessage::Position { .. } => { 
-                output_tx.send(uci_message)
-            },
-            // allows the engine to start calculating on current position
-            UciMessage::Go { .. } => {
-                output_tx.send(uci_message)
-            }
-            // stops all calculations.
-            UciMessage::Stop => { Ok(()) }
             _ => {
                 Ok(())
             },
