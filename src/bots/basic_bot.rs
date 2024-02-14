@@ -8,7 +8,10 @@ use std::cmp;
 pub struct BasicBot {
     pub board: Board,
     pesto: ( ColoredTables, ColoredTables ),
+
+    // UCI
     nodes_total: u64,
+    depth_node_count: Vec<u32>,
     ms_passed: u64,
     depth_data: Vec<DepthData>,
 }
@@ -24,6 +27,7 @@ impl BasicBot {
             board: board.clone(),
             pesto: create_pesto_piece_sqaure(),
             nodes_total: 0,
+            depth_node_count: vec![],
             ms_passed: 0,
             depth_data: vec![],
         }
