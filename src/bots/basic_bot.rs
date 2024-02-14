@@ -11,14 +11,14 @@ pub struct BasicBot {
 
     // UCI
     nodes_total: u64,
-    depth_node_count: Vec<u32>,
     ms_passed: u64,
     depth_data: Vec<DepthData>,
 }
 
 pub struct DepthData {
-    depth: u16,
-    best_move: Option<ChessMove>,
+    pub depth: u16,
+    pub best_move: Option<ChessMove>,
+    pub node_count: u32,
 }
 
 impl BasicBot {
@@ -27,7 +27,6 @@ impl BasicBot {
             board: board.clone(),
             pesto: create_pesto_piece_sqaure(),
             nodes_total: 0,
-            depth_node_count: vec![],
             ms_passed: 0,
             depth_data: vec![],
         }
@@ -96,7 +95,7 @@ impl BasicBot {
         let weighted_mg_score = mg_phase * mg_score as f32;
         let weighted_eg_score = eg_phase * eg_score as f32;
 
-        let score = (weighted_mg_score + weighted_eg_score);
+        let score = weighted_mg_score + weighted_eg_score;
 
         score
     }
@@ -163,14 +162,22 @@ impl BasicBot {
     }
 
     fn update_depth_data(&mut self, depth: u16, best_move: Option<ChessMove>) {
+        self.nodes_total += 1;
+
         if let Some(data) = self.depth_data.iter_mut().find(|d| d.depth == depth) {
             data.best_move = best_move;
+            data.node_count += 1;
         } else {
             self.depth_data.push(DepthData {
                 depth,
                 best_move,
+                node_count: 1,
             });
         }
+    }
+
+    pub fn get_depth_data(&self) -> &Vec<DepthData> {
+        &self.depth_data
     }
 
     pub fn internal_search(
@@ -181,15 +188,9 @@ impl BasicBot {
         mut beta: i32,
         is_maximizing_player: bool,
     ) -> (i32, Option<ChessMove>) {
-        self.nodes_total += 1;
   
-        if let Some(data) = self.depth_data.iter().find(|d| d.depth == depth) {
-            println!("Depth: {}, Best move: {:?}", data.depth, data.best_move);
-        }
-        
         if depth == 0 {
             let evaluation = self.evaluation(board);
-            // println!("Leaf node, evaluation: {}", evaluation);
             return (evaluation, None);
         }
 
@@ -198,34 +199,26 @@ impl BasicBot {
         all_moves.append(&mut capture_moves);
         all_moves.append(&mut non_capture_moves);
 
-        // println!("Generated moves: {:?}", all_moves);
-
         if all_moves.len() == 0 {
             if board.checkers().popcnt() != 0 {
-                // println!("No moves and in check, Checkmate, returning -1000000");
                 return (-1000000, None);
             }
-            // println!("No moves, Stalemate, returning 0");
             return (0, None);
         }
 
         let mut best_move = Some(all_moves[0]); // Store the first move as the best move initially
         if is_maximizing_player {
             let mut best_val = -1000000;
-            // println!("Maximizing player, initial best value: {}", best_val);
-
             for board_move in all_moves.iter() {
                 let board = board.make_move_new(*board_move);
                 let (eval, _) =
                     self.internal_search(&board, depth - 1, alpha, beta, !is_maximizing_player);
 
-                /*
                 if eval > beta {
                     // assuming the opponent would never let the player reach this position
                     //      i.e: "failing high"
                     return (beta, best_move);
                 }
-                */
 
                 if eval > best_val {
                     best_val = eval;
@@ -234,32 +227,25 @@ impl BasicBot {
                 }
                 alpha = cmp::max(alpha, best_val);
 
-                // println!("Move: {:?}, Value: {}, Best Value: {}, Alpha: {}", board_move, value, best_val, alpha);
-
                 if beta <= alpha {
-                    // println!("Alpha >= Beta, pruning");
                     break;
                 }
             }
             (best_val, best_move)
         } else {
             let mut best_val = 1000000;
-            // println!("Minimizing player, initial best value: {}", best_val);
 
             for board_move in all_moves.iter() {
                 let board = board.make_move_new(*board_move);
                 let (eval, _) =
                     self.internal_search(&board, depth - 1, alpha, beta, !is_maximizing_player);
 
-                /*
                 if eval < alpha {
                     // assuming the opponent would never let the player reach this position
                     //      i.e: "failing high"
-                    //
                     // same as the maximizing player but just in reverse.
                     return (alpha, best_move);
                 }
-                */
 
                 if eval < best_val {
                     best_val = eval;
@@ -268,10 +254,7 @@ impl BasicBot {
                 }
                 beta = cmp::min(beta, best_val);
 
-                // println!("Move: {:?}, Value: {}, Best Value: {}, Beta: {}", board_move, value, best_val, beta);
-
                 if beta <= alpha {
-                    // println!("Beta <= Alpha, pruning");
                     break;
                 }
             }

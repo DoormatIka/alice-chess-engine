@@ -1,12 +1,11 @@
 
 extern crate vampirc_uci;
 
-use chess::{Board, Rank, File};
+use chess::{Board, Rank, File, ChessMove, Piece};
 use peak_alloc::PeakAlloc;
-use std::fmt::Display;
 use std::str::FromStr;
 use std::time::Duration;
-use vampirc_uci::{parse, UciMove, UciMessage, UciTimeControl, UciSquare, UciInfoAttribute, Duration as TimeDelta};
+use vampirc_uci::{parse, UciMove, UciMessage, UciTimeControl, UciSquare, UciInfoAttribute, Duration as TimeDelta, UciPiece};
 
 use std::sync::mpsc::{self, Sender, Receiver, TryRecvError};
 use std::io::stdin;
@@ -45,6 +44,31 @@ fn file_to_string(file: &File) -> char {
         File::F => 'f',
         File::G => 'g',
         File::H => 'h',
+    }
+}
+fn chess_piece_to_uci_piece(piece: &Piece) -> UciPiece {
+    match piece {
+        Piece::Pawn => UciPiece::Pawn,
+        Piece::Rook => UciPiece::Rook,
+        Piece::King => UciPiece::King,
+        Piece::Queen => UciPiece::Queen,
+        Piece::Knight => UciPiece::Knight,
+        Piece::Bishop => UciPiece::Bishop,
+    }
+}
+
+fn chess_move_to_uci_move(chess_move: &ChessMove) -> UciMove {
+    let (src_file, src_rank) = (chess_move.get_source().get_file(), chess_move.get_source().get_rank());
+    let (dest_file, dest_rank) = (chess_move.get_dest().get_file(), chess_move.get_dest().get_rank());
+    let promotion = match chess_move.get_promotion() {
+        Some(chess_move) => Some(chess_piece_to_uci_piece(&chess_move)),
+        None => None,
+    };
+
+    UciMove {
+        from: UciSquare { file: file_to_string(&src_file), rank: rank_to_number(&src_rank) },
+        to: UciSquare { file: file_to_string(&dest_file), rank: rank_to_number(&dest_rank) },
+        promotion,
     }
 }
 
@@ -102,28 +126,27 @@ fn output_thread(out: UciMessage, toggle_ready_ok: &Arc<RwLock<bool>>) {
                 };
             };
             if let Some(search_control) = search_control {
-                let board = Board::from_str("rnb1kbnr/ppp1pppp/8/3p4/2q1P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 1").expect("Die.");
+                let board = Board::from_str("rnb1kbnr/ppp2ppp/8/3p4/2q1p3/3Q4/PPPP1PPP/RNB1KBNR w KQkq - 0 ").expect("Die.");
 
                 if let Some(depth) = search_control.depth {
                     let mut bot = BasicBot::new(&board);
                     let (eval, chess_move) = bot.search(depth as u16);
-                    let (src_rank, src_file) = (chess_move.get_source().get_rank(), chess_move.get_source().get_file());
-                    let (dest_rank, dest_file) = (chess_move.get_dest().get_rank(), chess_move.get_dest().get_file());
+                    let best_uci_move = chess_move_to_uci_move(&chess_move);
+                    let depth_data = bot.get_depth_data();
 
-                    let chess_move = UciMove {
-                        from: UciSquare { file: file_to_string(&src_file), rank: rank_to_number(&src_rank) }, 
-                        to: UciSquare { file: file_to_string(&dest_file), rank: rank_to_number(&dest_rank) }, 
-                        promotion: None,
-                    };
+                    for data in depth_data {
+                        let mut info_vec: Vec<UciInfoAttribute> = vec![];
+    
+                        if let Some(chess_move) = data.best_move {
+                            let chess_move = chess_move_to_uci_move(&chess_move);
+                            info_vec.push(UciInfoAttribute::Pv(vec![chess_move]));
+                        };
+                        info_vec.push(UciInfoAttribute::Depth(data.depth as u8));
+                        info_vec.push(UciInfoAttribute::Nodes(data.node_count as u64));
 
-                    for depth in 0..depth {
-                        // put this in to the search function in basic bot
-                        let depth = UciInfoAttribute::Depth(depth);
-                        let pv = UciInfoAttribute::Pv(vec![chess_move]);
-                        let nodes = UciInfoAttribute::Nodes(bot.get_nodes_per_second() as u64);
-                        println!("{}", UciMessage::Info(vec![depth, pv, nodes]));
+                        println!("{}", UciMessage::Info(info_vec));
                     }
-                    let best_move = UciMessage::best_move(chess_move);
+                    let best_move = UciMessage::best_move(best_uci_move);
                     println!("{}", best_move);
                 }
             };
@@ -157,6 +180,7 @@ fn main() {
     // OUTPUT
     thread::spawn(move || {
         loop {
+            thread::sleep(Duration::from_millis(100));
             match output_rx.try_recv() {
                 Ok(out) => output_thread(out, &toggle_ready_ok),
                 Err(err) => {
@@ -172,6 +196,8 @@ fn main() {
 
     loop { // this part might seem useless but its not.
         let uci_message = input_rx.recv().expect("Failed to recieve from input thread.");
+
+        thread::sleep(Duration::from_millis(100));
 
         match uci_message {
             UciMessage::Uci 
@@ -191,8 +217,5 @@ fn main() {
                 Ok(())
             },
         }.expect("Main thread can't send to output/process thread");
-        
-        // let peak_mem = PEAK_ALLOC.peak_usage_as_kb();
-        // println!("The max memory that was used: {}kb", peak_mem);
     }
 }
