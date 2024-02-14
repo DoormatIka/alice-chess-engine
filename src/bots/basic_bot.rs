@@ -8,13 +8,30 @@ use std::cmp;
 pub struct BasicBot {
     pub board: Board,
     pesto: ( ColoredTables, ColoredTables ),
+    nodes_total: u64,
+    ms_passed: u64,
 }
 impl BasicBot {
     pub fn new(board: &Board) -> Self {
         Self {
             board: board.clone(),
             pesto: create_pesto_piece_sqaure(),
+            nodes_total: 0,
+            ms_passed: 0,
         }
+    }
+
+    /**
+     * Gets the nodes per second from the search function.
+     */
+    pub fn get_nodes_per_second(&self) -> f64 {
+        self.nodes_total as f64 / (self.ms_passed as f64 / 1000.0)
+    }
+    /**
+     * Not supposed to be used by the user but...
+     */
+    pub fn set_ms_passed(&mut self, ms_passed: u64) {
+        self.ms_passed = ms_passed;
     }
 
     pub fn evaluate_material_advantage(&self, board: &Board) -> i32 {
@@ -141,7 +158,7 @@ impl BasicBot {
         mut beta: i32,
         is_maximizing_player: bool,
     ) -> (i32, Option<ChessMove>) {
-        // println!("Depth: {}, Alpha: {}, Beta: {}, Is Maximizing Player: {}", depth, alpha, beta, is_maximizing_player);
+        self.nodes_total += 1;
 
         if depth == 0 {
             let evaluation = self.evaluation(board);
