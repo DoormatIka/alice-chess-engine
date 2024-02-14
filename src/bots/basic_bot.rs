@@ -10,7 +10,14 @@ pub struct BasicBot {
     pesto: ( ColoredTables, ColoredTables ),
     nodes_total: u64,
     ms_passed: u64,
+    depth_data: Vec<DepthData>,
 }
+
+pub struct DepthData {
+    depth: u16,
+    best_move: Option<ChessMove>,
+}
+
 impl BasicBot {
     pub fn new(board: &Board) -> Self {
         Self {
@@ -18,6 +25,7 @@ impl BasicBot {
             pesto: create_pesto_piece_sqaure(),
             nodes_total: 0,
             ms_passed: 0,
+            depth_data: vec![],
         }
     }
 
@@ -150,6 +158,17 @@ impl BasicBot {
         material
     }
 
+    fn update_depth_data(&mut self, depth: u16, best_move: Option<ChessMove>) {
+        if let Some(data) = self.depth_data.iter_mut().find(|d| d.depth == depth) {
+            data.best_move = best_move;
+        } else {
+            self.depth_data.push(DepthData {
+                depth,
+                best_move,
+            });
+        }
+    }
+
     pub fn internal_search(
         &mut self,
         board: &Board,
@@ -159,7 +178,11 @@ impl BasicBot {
         is_maximizing_player: bool,
     ) -> (i32, Option<ChessMove>) {
         self.nodes_total += 1;
-
+  
+        if let Some(data) = self.depth_data.iter().find(|d| d.depth == depth) {
+            println!("Depth: {}, Best move: {:?}", data.depth, data.best_move);
+        }
+        
         if depth == 0 {
             let evaluation = self.evaluation(board);
             // println!("Leaf node, evaluation: {}", evaluation);
@@ -183,7 +206,6 @@ impl BasicBot {
         }
 
         let mut best_move = Some(all_moves[0]); // Store the first move as the best move initially
-
         if is_maximizing_player {
             let mut best_val = -1000000;
             // println!("Maximizing player, initial best value: {}", best_val);
@@ -204,6 +226,7 @@ impl BasicBot {
                 if eval > best_val {
                     best_val = eval;
                     best_move = Some(*board_move);
+                    self.update_depth_data(depth, best_move);
                 }
                 alpha = cmp::max(alpha, best_val);
 
@@ -237,6 +260,7 @@ impl BasicBot {
                 if eval < best_val {
                     best_val = eval;
                     best_move = Some(*board_move);
+                    self.update_depth_data(depth, best_move);
                 }
                 beta = cmp::min(beta, best_val);
 
