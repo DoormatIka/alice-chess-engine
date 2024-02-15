@@ -22,6 +22,7 @@ impl BasicBot {
     }
 
     pub fn evaluate_material_advantage(&self, board: &Board) -> i32 {
+
         let white = PiecesColored::get_colored_pieces(&board, Color::White);
         let black = PiecesColored::get_colored_pieces(&board, Color::Black);
 
@@ -29,29 +30,45 @@ impl BasicBot {
         let material_black = self.calculate_material(black) as i32;
 
         let eval = material_white - material_black;
+        // this has a perspective because 
+        //      negative means good for black,
+        //      positive means good for white,
         let perspective = if board.side_to_move() == Color::White {
             1
         } else {
             -1
         };
 
+        // this may have a problem in the call site "search",
+        //      where piece_sq_table eval and material eval
+        //      get added together:
+        //
+        //      so if the color is black:
+        //         material      piece_sq       eval
+        //          (-100)   +    (100)     =    0
+        //      if the color is white:
+        //         material      piece_sq       eval
+        //          (100)   +    (100)     =    200
         return eval * perspective;
     }
 
     pub fn evaluate_piece_sq_table(&self, board: &Board) -> f32 {
+        // this should not have a "perspective" since it evaluates if
+        //      a position is good or not by negative & positive values
+        //      regardless of what color it is.
+        //      you switch those if you apply a negative value on it.
+
         let (white_mg_score, white_eg_score, black_mg_score, black_eg_score) =
             self.calculate_piece_sq_with_board(board); // doesn't work
-        let (mg_score, eg_score, perspective) = if board.side_to_move() == Color::White {
+        let (mg_score, eg_score) = if board.side_to_move() == Color::White {
             (
                 white_mg_score - black_mg_score,
                 white_eg_score - black_eg_score,
-                1,
             )
         } else {
             (
                 black_mg_score - white_mg_score,
                 black_eg_score - white_eg_score,
-                -1,
             )
         };
 
@@ -77,8 +94,7 @@ impl BasicBot {
     }
 
     /**
-     *     
-     * * Calculates the pieces in the board.
+     * Calculates the pieces in the board.
      *
      * (white_mg_score, white_eg_score, black_mg_score, black_eg_score) is the return type.
      * im sorry for using tuples again.
