@@ -2,13 +2,11 @@ extern crate vampirc_uci;
 
 use mimalloc::MiMalloc;
 
-use chess::{Board, ChessMove, File, Piece, Rank};
+use chess::Board;
+use uci::conversion::uci_move_to_chess_move;
 use std::str::FromStr;
 use std::time::Duration;
-use vampirc_uci::{
-    parse, Duration as TimeDelta, UciInfoAttribute, UciMessage, UciMove, UciPiece, UciSquare,
-    UciTimeControl,
-};
+use vampirc_uci::{parse, UciInfoAttribute, UciMessage, UciTimeControl};
 
 use std::io::stdin;
 use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
@@ -17,6 +15,7 @@ use std::thread;
 
 use crate::bots::basic_bot::BasicBot;
 use crate::bots::bot_traits::Search;
+use crate::uci::conversion;
 
 pub mod bots;
 pub mod fen;
@@ -29,69 +28,11 @@ pub mod uci;
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
 
-fn rank_to_number(rank: &Rank) -> u8 {
-    match rank {
-        Rank::First => 1,
-        Rank::Second => 2,
-        Rank::Third => 3,
-        Rank::Fourth => 4,
-        Rank::Fifth => 5,
-        Rank::Sixth => 6,
-        Rank::Seventh => 7,
-        Rank::Eighth => 8,
-    }
-}
-fn file_to_string(file: &File) -> char {
-    match file {
-        File::A => 'a',
-        File::B => 'b',
-        File::C => 'c',
-        File::D => 'd',
-        File::E => 'e',
-        File::F => 'f',
-        File::G => 'g',
-        File::H => 'h',
-    }
-}
-fn chess_piece_to_uci_piece(piece: &Piece) -> UciPiece {
-    match piece {
-        Piece::Pawn => UciPiece::Pawn,
-        Piece::Rook => UciPiece::Rook,
-        Piece::King => UciPiece::King,
-        Piece::Queen => UciPiece::Queen,
-        Piece::Knight => UciPiece::Knight,
-        Piece::Bishop => UciPiece::Bishop,
-    }
-}
-
-fn chess_move_to_uci_move(chess_move: &ChessMove) -> UciMove {
-    let (src_file, src_rank) = (
-        chess_move.get_source().get_file(),
-        chess_move.get_source().get_rank(),
-    );
-    let (dest_file, dest_rank) = (
-        chess_move.get_dest().get_file(),
-        chess_move.get_dest().get_rank(),
-    );
-    let promotion = match chess_move.get_promotion() {
-        Some(chess_move) => Some(chess_piece_to_uci_piece(&chess_move)),
-        None => None,
-    };
-
-    UciMove {
-        from: UciSquare {
-            file: file_to_string(&src_file),
-            rank: rank_to_number(&src_rank),
-        },
-        to: UciSquare {
-            file: file_to_string(&dest_file),
-            rank: rank_to_number(&dest_rank),
-        },
-        promotion,
-    }
-}
-
-fn output_thread(out: UciMessage, toggle_ready_ok: &Arc<RwLock<bool>>) {
+fn output_thread(
+    out: UciMessage, 
+    out_board: &mut Board,
+    toggle_ready_ok: &Arc<RwLock<bool>>,
+) {
     match out {
         UciMessage::Uci => {
             println!("id name Cirno");
@@ -99,19 +40,28 @@ fn output_thread(out: UciMessage, toggle_ready_ok: &Arc<RwLock<bool>>) {
             println!("{}", UciMessage::UciOk);
         }
 
-        // can be used by the GUI to check if the engine is ready or online
-        // also used when the GUI send a LOT of commands and will take time to complete
         UciMessage::IsReady => {
             *toggle_ready_ok.write().unwrap() = true;
         }
 
-        // sets up the board with a fen string and some moves
-        // btw, this is where "position startpos moves" will go to
-        UciMessage::Position {
-            startpos,
-            fen,
-            moves,
-        } => {}
+        UciMessage::Position { startpos, fen, moves } => {
+            let board = if startpos {
+                Some(Board::default())
+            } else {
+                fen.and_then(|fen| Board::from_str(fen.0.as_str()).ok())
+            };
+            
+            if let Some(board) = board {
+                let mut new_board = board.clone();
+                for uci_move in moves {
+                    if let Ok(chess_move) = uci_move_to_chess_move(&uci_move) {
+                        board.make_move(chess_move, &mut new_board);
+                    }
+                }
+                *out_board = new_board;
+                println!("updated: {}", out_board);
+            }
+        }
 
         // engine responsibilities, so "go" has to be here
         UciMessage::Go {
@@ -132,39 +82,27 @@ fn output_thread(out: UciMessage, toggle_ready_ok: &Arc<RwLock<bool>>) {
                     //      and it only becomes worth if the player plays the expected move.
                     // https://www.chessprogramming.org/Pondering
                     UciTimeControl::Ponder => (),
-
-                    // Search until the "stop" command.
-                    // Cannot be implemented at the moment.
                     UciTimeControl::Infinite => (),
-
-                    // Search exactly for x milliseconds.
-                    // Cannot be implemented at the moment.
                     UciTimeControl::MoveTime(_time) => (),
-
-                    // Notifies the engine of how much time there is left.
                     UciTimeControl::TimeLeft { .. } => (),
                 };
             };
             if let Some(search_control) = search_control {
-                let board = Board::from_str(
-                    "rnb1kb1r/ppp2ppp/8/3p1n2/4p3/3Qq1N1/PPPP1PPP/RNB1KB1R w KQkq - 0 1",
-                )
-                .expect("Die.");
-
                 if let Some(depth) = search_control.depth {
-                    let mut bot = BasicBot::new(&board);
+                    let mut bot = BasicBot::new(&out_board);
                     let (eval, chess_move) = bot.search(depth as u16);
-                    let best_uci_move = chess_move_to_uci_move(&chess_move);
+                    let best_uci_move = conversion::chess_move_to_uci_move(&chess_move);
 
-                    let mut depth_data = bot.uci.get_depth_data();
+                    let depth_data = bot.uci.get_depth_data();
 
-                    depth_data.reverse();
+                    for index in (0..depth_data.len()).rev() {
+                        let data = &depth_data[index];
 
-                    for data in depth_data {
                         let mut info_vec: Vec<UciInfoAttribute> = vec![];
+                        info_vec.reserve(3);
 
                         if let Some(chess_move) = data.best_move {
-                            let chess_move = chess_move_to_uci_move(&chess_move);
+                            let chess_move = conversion::chess_move_to_uci_move(&chess_move);
                             info_vec.push(UciInfoAttribute::Pv(vec![chess_move]));
                         };
                         info_vec.push(UciInfoAttribute::Depth(data.depth as u8));
@@ -204,14 +142,17 @@ fn main() {
     });
 
     // OUTPUT
-    thread::spawn(move || loop {
-        thread::sleep(Duration::from_millis(100));
-        match output_rx.try_recv() {
-            Ok(out) => output_thread(out, &toggle_ready_ok),
-            Err(err) => match err {
-                TryRecvError::Disconnected => panic!("Disconnected from the main thread!"),
-                _ => {}
-            },
+    thread::spawn(move || {
+        let mut board = Board::default();
+        loop {
+            thread::sleep(Duration::from_millis(100));
+            match output_rx.try_recv() {
+                Ok(out) => output_thread(out, &mut board, &toggle_ready_ok),
+                Err(err) => match err {
+                    TryRecvError::Disconnected => panic!("Disconnected from the main thread!"),
+                    _ => {}
+                },
+            }
         }
     });
 

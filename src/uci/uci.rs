@@ -32,8 +32,8 @@ impl Uci {
         self.ms_passed = ms_passed;
     }
 
-    pub fn get_depth_data(&mut self) -> Vec<DepthData> {
-        self.depth_data.clone()
+    pub fn get_depth_data(&self) -> &Vec<DepthData> {
+        &self.depth_data
     }
 
     pub fn update_depth_data(&mut self, depth: u16, max_depth: u16, best_move: Option<ChessMove>) {

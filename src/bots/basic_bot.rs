@@ -1,6 +1,6 @@
 use crate::piece_sq_tables::{create_pesto_piece_sqaure, ColoredTables};
 use crate::types::pieces_colored::PiecesColored;
-use crate::uci::Uci;
+use crate::uci::uci::Uci;
 use crate::{bots::bot_traits::Evaluation, moves::move_gen::generate_moves};
 
 use chess::{Board, ChessMove, Color, Piece, ALL_SQUARES};
@@ -94,7 +94,7 @@ impl BasicBot {
     }
 
     /**
-     * Calculates the pieces in the board.
+     * * Calculates the pieces in the board.
      *
      * (white_mg_score, white_eg_score, black_mg_score, black_eg_score) is the return type.
      * im sorry for using tuples again.
