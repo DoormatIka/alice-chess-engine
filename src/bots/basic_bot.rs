@@ -1,5 +1,6 @@
 use crate::piece_sq_tables::{create_pesto_piece_sqaure, ColoredTables};
 use crate::types::pieces_colored::PiecesColored;
+use crate::uci::Uci;
 use crate::{bots::bot_traits::Evaluation, moves::move_gen::generate_moves};
 
 use chess::{Board, ChessMove, Color, ALL_SQUARES, Piece};
@@ -12,14 +13,10 @@ pub struct BasicBot {
     // UCI
     nodes_total: u64,
     ms_passed: u64,
-    depth_data: Vec<DepthData>,
+    pub uci: Uci,
 }
 
-pub struct DepthData {
-    pub depth: u16,
-    pub best_move: Option<ChessMove>,
-    pub node_count: u32,
-}
+
 
 impl BasicBot {
     pub fn new(board: &Board) -> Self {
@@ -28,7 +25,7 @@ impl BasicBot {
             pesto: create_pesto_piece_sqaure(),
             nodes_total: 0,
             ms_passed: 0,
-            depth_data: vec![],
+            uci: Uci::default(),
         }
     }
 
@@ -161,28 +158,11 @@ impl BasicBot {
         material
     }
 
-    fn update_depth_data(&mut self, depth: u16, best_move: Option<ChessMove>) {
-        self.nodes_total += 1;
-
-        if let Some(data) = self.depth_data.iter_mut().find(|d| d.depth == depth) {
-            data.best_move = best_move;
-            data.node_count += 1;
-        } else {
-            self.depth_data.push(DepthData {
-                depth,
-                best_move,
-                node_count: 1,
-            });
-        }
-    }
-
-    pub fn get_depth_data(&self) -> &Vec<DepthData> {
-        &self.depth_data
-    }
 
     pub fn internal_search(
         &mut self,
         board: &Board,
+        max_depth: u16,
         depth: u16,
         mut alpha: i32,
         mut beta: i32,
@@ -212,7 +192,7 @@ impl BasicBot {
             for board_move in all_moves.iter() {
                 let board = board.make_move_new(*board_move);
                 let (eval, _) =
-                    self.internal_search(&board, depth - 1, alpha, beta, !is_maximizing_player);
+                    self.internal_search(&board, max_depth, depth - 1, alpha, beta, !is_maximizing_player);
 
                 if eval > beta {
                     // assuming the opponent would never let the player reach this position
@@ -223,7 +203,7 @@ impl BasicBot {
                 if eval > best_val {
                     best_val = eval;
                     best_move = Some(*board_move);
-                    self.update_depth_data(depth, best_move);
+                    self.uci.update_depth_data( depth, max_depth, best_move);
                 }
                 alpha = cmp::max(alpha, best_val);
 
@@ -238,7 +218,7 @@ impl BasicBot {
             for board_move in all_moves.iter() {
                 let board = board.make_move_new(*board_move);
                 let (eval, _) =
-                    self.internal_search(&board, depth - 1, alpha, beta, !is_maximizing_player);
+                    self.internal_search(&board, max_depth, depth - 1, alpha, beta, !is_maximizing_player);
 
                 if eval < alpha {
                     // assuming the opponent would never let the player reach this position
@@ -250,7 +230,7 @@ impl BasicBot {
                 if eval < best_val {
                     best_val = eval;
                     best_move = Some(*board_move);
-                    self.update_depth_data(depth, best_move);
+                    self.uci.update_depth_data(depth, max_depth, best_move);
                 }
                 beta = cmp::min(beta, best_val);
 

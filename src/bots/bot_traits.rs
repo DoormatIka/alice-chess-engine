@@ -15,7 +15,7 @@ impl Search for BasicBot {
         let beta = 999999; // Positive infinity
 
         let start = Instant::now();
-        let (best_eval, best_move) = self.internal_search(&board, depth, alpha, beta, true);
+        let (best_eval, best_move) = self.internal_search(&board, depth, depth, alpha, beta, true);
         self.set_ms_passed(start.elapsed().as_millis() as u64);
 
         (best_eval, best_move.unwrap())
