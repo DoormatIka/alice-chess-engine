@@ -55,7 +55,8 @@ fn output_thread(
                 let mut new_board = board.clone();
                 for uci_move in moves {
                     if let Ok(chess_move) = uci_move_to_chess_move(&uci_move) {
-                        board.make_move(chess_move, &mut new_board);
+                        println!("{:?}", new_board.side_to_move());
+                        new_board = board.make_move_new(chess_move);
                     }
                 }
                 *out_board = new_board;
