@@ -1,12 +1,10 @@
-
-
 use std::str::FromStr;
 
 use chess::{BoardStatus, ChessMove, Color, Game};
 
-use crate::fen::print_board_from_fen;
 use crate::bots::basic_bot::BasicBot;
 use crate::bots::bot_traits::Search;
+use crate::fen::print_board_from_fen;
 use crate::moves::move_gen::generate_moves;
 use crate::moves::user_move::get_user_move;
 

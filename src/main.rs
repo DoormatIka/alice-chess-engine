@@ -1,27 +1,29 @@
-
 extern crate vampirc_uci;
 
 use mimalloc::MiMalloc;
 
-use chess::{Board, Rank, File, ChessMove, Piece};
+use chess::{Board, ChessMove, File, Piece, Rank};
 use std::str::FromStr;
 use std::time::Duration;
-use vampirc_uci::{parse, UciMove, UciMessage, UciTimeControl, UciSquare, UciInfoAttribute, Duration as TimeDelta, UciPiece};
+use vampirc_uci::{
+    parse, Duration as TimeDelta, UciInfoAttribute, UciMessage, UciMove, UciPiece, UciSquare,
+    UciTimeControl,
+};
 
-use std::sync::mpsc::{self, Sender, Receiver, TryRecvError};
 use std::io::stdin;
-use std::thread;
+use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
 use std::sync::{Arc, RwLock};
+use std::thread;
 
 use crate::bots::basic_bot::BasicBot;
 use crate::bots::bot_traits::Search;
 
 pub mod bots;
 pub mod fen;
+pub mod game;
 pub mod moves;
 pub mod piece_sq_tables;
 pub mod types;
-pub mod game;
 pub mod uci;
 
 #[global_allocator]
@@ -63,20 +65,31 @@ fn chess_piece_to_uci_piece(piece: &Piece) -> UciPiece {
 }
 
 fn chess_move_to_uci_move(chess_move: &ChessMove) -> UciMove {
-    let (src_file, src_rank) = (chess_move.get_source().get_file(), chess_move.get_source().get_rank());
-    let (dest_file, dest_rank) = (chess_move.get_dest().get_file(), chess_move.get_dest().get_rank());
+    let (src_file, src_rank) = (
+        chess_move.get_source().get_file(),
+        chess_move.get_source().get_rank(),
+    );
+    let (dest_file, dest_rank) = (
+        chess_move.get_dest().get_file(),
+        chess_move.get_dest().get_rank(),
+    );
     let promotion = match chess_move.get_promotion() {
         Some(chess_move) => Some(chess_piece_to_uci_piece(&chess_move)),
         None => None,
     };
 
     UciMove {
-        from: UciSquare { file: file_to_string(&src_file), rank: rank_to_number(&src_rank) },
-        to: UciSquare { file: file_to_string(&dest_file), rank: rank_to_number(&dest_rank) },
+        from: UciSquare {
+            file: file_to_string(&src_file),
+            rank: rank_to_number(&src_rank),
+        },
+        to: UciSquare {
+            file: file_to_string(&dest_file),
+            rank: rank_to_number(&dest_rank),
+        },
         promotion,
     }
 }
-
 
 fn output_thread(out: UciMessage, toggle_ready_ok: &Arc<RwLock<bool>>) {
     match out {
@@ -84,31 +97,36 @@ fn output_thread(out: UciMessage, toggle_ready_ok: &Arc<RwLock<bool>>) {
             println!("id name Cirno");
             println!("id author twoleaflotus");
             println!("{}", UciMessage::UciOk);
-        },
+        }
 
         // can be used by the GUI to check if the engine is ready or online
         // also used when the GUI send a LOT of commands and will take time to complete
         UciMessage::IsReady => {
             *toggle_ready_ok.write().unwrap() = true;
-        },
+        }
 
         // sets up the board with a fen string and some moves
         // btw, this is where "position startpos moves" will go to
-        UciMessage::Position { startpos, fen, moves } => {
-
-        }
+        UciMessage::Position {
+            startpos,
+            fen,
+            moves,
+        } => {}
 
         // engine responsibilities, so "go" has to be here
-        UciMessage::Go { time_control, search_control } => {
+        UciMessage::Go {
+            time_control,
+            search_control,
+        } => {
             if let Some(time_control) = time_control {
                 match time_control {
                     // the act of thinking during the opponent's turn.
                     // we have separate threads so this should be easy to implement.
-                    //      however, i don't really see a gain with 
+                    //      however, i don't really see a gain with
                     //      pondering (with the techniques rn), so no thanks.
-                    // 
+                    //
                     // (opinion)
-                    // also pondering can only be worth it *if* 
+                    // also pondering can only be worth it *if*
                     //      the engine & player is on the same level.
                     //      since pondering searches through the tree and does a null-move (?)
                     //      and it only becomes worth if the player plays the expected move.
@@ -128,7 +146,10 @@ fn output_thread(out: UciMessage, toggle_ready_ok: &Arc<RwLock<bool>>) {
                 };
             };
             if let Some(search_control) = search_control {
-                let board = Board::from_str("rnb1kb1r/ppp2ppp/8/3p1n2/4p3/3Qq1N1/PPPP1PPP/RNB1KB1R w KQkq - 0 1").expect("Die.");
+                let board = Board::from_str(
+                    "rnb1kb1r/ppp2ppp/8/3p1n2/4p3/3Qq1N1/PPPP1PPP/RNB1KB1R w KQkq - 0 1",
+                )
+                .expect("Die.");
 
                 if let Some(depth) = search_control.depth {
                     let mut bot = BasicBot::new(&board);
@@ -141,7 +162,7 @@ fn output_thread(out: UciMessage, toggle_ready_ok: &Arc<RwLock<bool>>) {
 
                     for data in depth_data {
                         let mut info_vec: Vec<UciInfoAttribute> = vec![];
-    
+
                         if let Some(chess_move) = data.best_move {
                             let chess_move = chess_move_to_uci_move(&chess_move);
                             info_vec.push(UciInfoAttribute::Pv(vec![chess_move]));
@@ -156,7 +177,7 @@ fn output_thread(out: UciMessage, toggle_ready_ok: &Arc<RwLock<bool>>) {
                 }
             };
         }
-        _ => {},
+        _ => {}
     }
     if *toggle_ready_ok.read().unwrap() == true {
         println!("{}", UciMessage::ReadyOk);
@@ -170,57 +191,50 @@ fn main() {
     let toggle_ready_ok = Arc::new(RwLock::new(false));
 
     // INPUT
-    thread::spawn(move || {
-        loop {
-            let mut input = String::new();
-            stdin().read_line(&mut input).expect("Failed to read line");
+    thread::spawn(move || loop {
+        let mut input = String::new();
+        stdin().read_line(&mut input).expect("Failed to read line");
 
-            let uci = parse(input.as_str());
-            for command in uci {
-                input_tx.send(command).expect("Failed to send input to main thread.")
-            }
+        let uci = parse(input.as_str());
+        for command in uci {
+            input_tx
+                .send(command)
+                .expect("Failed to send input to main thread.")
         }
     });
 
     // OUTPUT
-    thread::spawn(move || {
-        loop {
-            thread::sleep(Duration::from_millis(100));
-            match output_rx.try_recv() {
-                Ok(out) => output_thread(out, &toggle_ready_ok),
-                Err(err) => {
-                    match err {
-                        TryRecvError::Disconnected => panic!("Disconnected from the main thread!"),
-                        _ => {},
-                    }
-                },
-            }
+    thread::spawn(move || loop {
+        thread::sleep(Duration::from_millis(100));
+        match output_rx.try_recv() {
+            Ok(out) => output_thread(out, &toggle_ready_ok),
+            Err(err) => match err {
+                TryRecvError::Disconnected => panic!("Disconnected from the main thread!"),
+                _ => {}
+            },
         }
     });
 
-
-    loop { // this part might seem useless but its not.
-        let uci_message = input_rx.recv().expect("Failed to recieve from input thread.");
+    loop {
+        // this part might seem useless but its not.
+        let uci_message = input_rx
+            .recv()
+            .expect("Failed to recieve from input thread.");
 
         thread::sleep(Duration::from_millis(100));
 
         match uci_message {
-            UciMessage::Uci 
-                | UciMessage::IsReady
-                | UciMessage::Position { .. }
-                | UciMessage::Go { .. }
-                | UciMessage::Stop => {
-                output_tx.send(uci_message)
-            },
+            UciMessage::Uci
+            | UciMessage::IsReady
+            | UciMessage::Position { .. }
+            | UciMessage::Go { .. }
+            | UciMessage::Stop => output_tx.send(uci_message),
 
             // not supported, use position startpos moves e2e4 ... instead.
             // https://stackoverflow.com/questions/56528420/basic-questions-on-uci-engine-ucinewgame-and-multiple-clients
-            UciMessage::UciNewGame => {
-                Ok(())
-            }
-            _ => {
-                Ok(())
-            },
-        }.expect("Main thread can't send to output/process thread");
+            UciMessage::UciNewGame => Ok(()),
+            _ => Ok(()),
+        }
+        .expect("Main thread can't send to output/process thread");
     }
 }

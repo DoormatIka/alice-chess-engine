@@ -3,43 +3,22 @@ use crate::types::pieces_colored::PiecesColored;
 use crate::uci::Uci;
 use crate::{bots::bot_traits::Evaluation, moves::move_gen::generate_moves};
 
-use chess::{Board, ChessMove, Color, ALL_SQUARES, Piece};
+use chess::{Board, ChessMove, Color, Piece, ALL_SQUARES};
 use std::cmp;
 
 pub struct BasicBot {
     pub board: Board,
-    pesto: ( ColoredTables, ColoredTables ),
-
-    // UCI
-    nodes_total: u64,
-    ms_passed: u64,
+    pesto: (ColoredTables, ColoredTables),
     pub uci: Uci,
 }
-
-
 
 impl BasicBot {
     pub fn new(board: &Board) -> Self {
         Self {
             board: board.clone(),
             pesto: create_pesto_piece_sqaure(),
-            nodes_total: 0,
-            ms_passed: 0,
             uci: Uci::default(),
         }
-    }
-
-    /**
-     * Gets the nodes per second from the search function.
-     */
-    pub fn get_nodes_per_second(&self) -> f64 {
-        self.nodes_total as f64 / (self.ms_passed as f64 / 1000.0)
-    }
-    /**
-     * Not supposed to be used by the user but...
-     */
-    pub fn set_ms_passed(&mut self, ms_passed: u64) {
-        self.ms_passed = ms_passed;
     }
 
     pub fn evaluate_material_advantage(&self, board: &Board) -> i32 {
@@ -66,13 +45,13 @@ impl BasicBot {
             (
                 white_mg_score - black_mg_score,
                 white_eg_score - black_eg_score,
-                1
+                1,
             )
         } else {
             (
                 black_mg_score - white_mg_score,
                 black_eg_score - white_eg_score,
-                -1
+                -1,
             )
         };
 
@@ -122,7 +101,7 @@ impl BasicBot {
                         Color::White => {
                             white_mg += mg_pesto.white[piece as usize][sq.to_int() as usize];
                             white_eg += eg_pesto.white[piece as usize][sq.to_int() as usize];
-                        },
+                        }
                         Color::Black => {
                             black_mg += mg_pesto.black[piece as usize][sq.to_int() as usize];
                             black_eg += eg_pesto.black[piece as usize][sq.to_int() as usize];
@@ -158,7 +137,6 @@ impl BasicBot {
         material
     }
 
-
     pub fn internal_search(
         &mut self,
         board: &Board,
@@ -168,7 +146,6 @@ impl BasicBot {
         mut beta: i32,
         is_maximizing_player: bool,
     ) -> (i32, Option<ChessMove>) {
-  
         if depth == 0 {
             let evaluation = self.evaluation(board);
             return (evaluation, None);
@@ -191,8 +168,14 @@ impl BasicBot {
             let mut best_val = -1000000;
             for board_move in all_moves.iter() {
                 let board = board.make_move_new(*board_move);
-                let (eval, _) =
-                    self.internal_search(&board, max_depth, depth - 1, alpha, beta, !is_maximizing_player);
+                let (eval, _) = self.internal_search(
+                    &board,
+                    max_depth,
+                    depth - 1,
+                    alpha,
+                    beta,
+                    !is_maximizing_player,
+                );
 
                 if eval > beta {
                     // assuming the opponent would never let the player reach this position
@@ -203,7 +186,7 @@ impl BasicBot {
                 if eval > best_val {
                     best_val = eval;
                     best_move = Some(*board_move);
-                    self.uci.update_depth_data( depth, max_depth, best_move);
+                    self.uci.update_depth_data(depth, max_depth, best_move);
                 }
                 alpha = cmp::max(alpha, best_val);
 
@@ -217,8 +200,14 @@ impl BasicBot {
 
             for board_move in all_moves.iter() {
                 let board = board.make_move_new(*board_move);
-                let (eval, _) =
-                    self.internal_search(&board, max_depth, depth - 1, alpha, beta, !is_maximizing_player);
+                let (eval, _) = self.internal_search(
+                    &board,
+                    max_depth,
+                    depth - 1,
+                    alpha,
+                    beta,
+                    !is_maximizing_player,
+                );
 
                 if eval < alpha {
                     // assuming the opponent would never let the player reach this position
