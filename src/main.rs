@@ -56,7 +56,7 @@ fn output_thread(
                 for uci_move in moves {
                     if let Ok(chess_move) = uci_move_to_chess_move(&uci_move) {
                         println!("{:?}", new_board.side_to_move());
-                        new_board = board.make_move_new(chess_move);
+                        new_board = new_board.make_move_new(chess_move);
                     }
                 }
                 *out_board = new_board;
