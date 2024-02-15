@@ -1,8 +1,9 @@
 
 extern crate vampirc_uci;
 
+use mimalloc::MiMalloc;
+
 use chess::{Board, Rank, File, ChessMove, Piece};
-use peak_alloc::PeakAlloc;
 use std::str::FromStr;
 use std::time::Duration;
 use vampirc_uci::{parse, UciMove, UciMessage, UciTimeControl, UciSquare, UciInfoAttribute, Duration as TimeDelta, UciPiece};
@@ -21,6 +22,9 @@ pub mod moves;
 pub mod piece_sq_tables;
 pub mod types;
 pub mod game;
+
+#[global_allocator]
+static GLOBAL: MiMalloc = MiMalloc;
 
 fn rank_to_number(rank: &Rank) -> u8 {
     match rank {
@@ -71,9 +75,6 @@ fn chess_move_to_uci_move(chess_move: &ChessMove) -> UciMove {
         promotion,
     }
 }
-
-#[global_allocator]
-static PEAK_ALLOC: PeakAlloc = PeakAlloc;
 
 
 fn output_thread(out: UciMessage, toggle_ready_ok: &Arc<RwLock<bool>>) {
@@ -126,7 +127,7 @@ fn output_thread(out: UciMessage, toggle_ready_ok: &Arc<RwLock<bool>>) {
                 };
             };
             if let Some(search_control) = search_control {
-                let board = Board::from_str("rnb1kbnr/ppp2ppp/8/3p4/2q1p3/3Q4/PPPP1PPP/RNB1KBNR w KQkq - 0 ").expect("Die.");
+                let board = Board::from_str("rnb1kb1r/ppp2ppp/8/3p1n2/4p3/3Qq1N1/PPPP1PPP/RNB1KB1R w KQkq - 0 1").expect("Die.");
 
                 if let Some(depth) = search_control.depth {
                     let mut bot = BasicBot::new(&board);
