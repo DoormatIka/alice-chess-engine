@@ -135,7 +135,9 @@ fn output_thread(out: UciMessage, toggle_ready_ok: &Arc<RwLock<bool>>) {
                     let (eval, chess_move) = bot.search(depth as u16);
                     let best_uci_move = chess_move_to_uci_move(&chess_move);
 
-                    let depth_data = bot.uci.get_depth_data();
+                    let mut depth_data = bot.uci.get_depth_data();
+
+                    depth_data.reverse();
 
                     for data in depth_data {
                         let mut info_vec: Vec<UciInfoAttribute> = vec![];
