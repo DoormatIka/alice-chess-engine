@@ -50,17 +50,14 @@ fn output_thread(
             } else {
                 fen.and_then(|fen| Board::from_str(fen.0.as_str()).ok())
             };
-            
             if let Some(board) = board {
                 let mut new_board = board.clone();
                 for uci_move in moves {
                     if let Ok(chess_move) = uci_move_to_chess_move(&uci_move) {
-                        println!("{:?}", new_board.side_to_move());
                         new_board = new_board.make_move_new(chess_move);
                     }
                 }
                 *out_board = new_board;
-                println!("updated: {}", out_board);
             }
         }
 
