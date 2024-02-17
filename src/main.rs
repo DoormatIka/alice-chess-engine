@@ -54,9 +54,11 @@ fn output_thread(
                 let mut new_board = board.clone();
                 for uci_move in moves {
                     if let Ok(chess_move) = uci_move_to_chess_move(&uci_move) {
-                        match new_board.status() {
-                            BoardStatus::Ongoing => new_board = new_board.make_move_new(chess_move),
-                            _ => (),
+                        if new_board.status() == BoardStatus::Ongoing {
+                            let temp_board = new_board.make_move_new(chess_move);
+                            if temp_board.status() == BoardStatus::Ongoing {
+                                new_board = temp_board;
+                            }
                         }
                     }
                 }
