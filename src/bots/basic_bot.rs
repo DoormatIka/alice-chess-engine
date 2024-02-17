@@ -142,15 +142,22 @@ impl BasicBot {
         mut beta: i32,
         is_maximizing_player: bool,
     ) -> (i32, Option<ChessMove>) {
+        let all_moves = generate_moves(&board);
+
         if depth == 0 {
-            let evaluation = self.evaluation(board);
+            let evaluation = self.evaluation(board, &all_moves);
             return (evaluation, None);
         }
-    
-        let (mut capture_moves, mut non_capture_moves) = generate_moves(&board);
-        let mut all_moves: Vec<ChessMove> = vec![];
-        all_moves.append(&mut capture_moves);
-        all_moves.append(&mut non_capture_moves);
+
+        /*
+        let checkers = board.checkers();
+        if checkers.popcnt() >= 1 {
+            let sq = checkers.to_square();
+            if let Some(color) = board.color_on(sq) {
+                // we can do something with this.
+            }
+        }
+        */
     
         let mut best_move = all_moves.get(0).map(|f| f.clone()); // Store the first move as the best move initially
         if is_maximizing_player {
@@ -166,15 +173,6 @@ impl BasicBot {
                     beta,
                     !is_maximizing_player,
                 );
-    
-                // If the move results in a check, give a bonus
-                if board.checkers().popcnt() != 0 {
-                    eval += 1000;
-                }
-    
-                if eval > beta {
-                    return (beta, best_move);
-                }
     
                 if eval > best_val {
                     best_val = eval;
@@ -201,15 +199,6 @@ impl BasicBot {
                     beta,
                     !is_maximizing_player,
                 );
-    
-                // If the move results in a check, give a penalty
-                if board.checkers().popcnt() != 0 {
-                    eval -= 1000;
-                }
-    
-                if eval < alpha {
-                    return (alpha, best_move);
-                }
     
                 if eval < best_val {
                     best_val = eval;

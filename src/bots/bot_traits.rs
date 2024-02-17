@@ -1,5 +1,5 @@
 use crate::bots::basic_bot::BasicBot;
-use chess::{Board, ChessMove};
+use chess::{Board, ChessMove, Color};
 
 use std::time::Instant;
 
@@ -23,17 +23,23 @@ impl Search for BasicBot {
 }
 
 pub trait Evaluation {
-    fn evaluation(&self, board: &Board) -> i32;
+    fn evaluation(&self, board: &Board, moves: &Vec<ChessMove>) -> i32;
 }
 
 impl Evaluation for BasicBot {
-    // internal function, doesn't interact with self
-    fn evaluation(&self, board: &Board) -> i32 {
-        // currently handles quiet moves like shit.
-        // if there's no capture moves, then it'll be the first move in the movelist
+    fn evaluation(&self, board: &Board, moves: &Vec<ChessMove>) -> i32 {
+        // all of these functions subtract from black and white and vice versa
+        // should we pass in the "maximizing_player" boolean instead of praying White will be the
+        // maximizing player?
         let material = self.evaluate_material_advantage(board);
         let position = self.evaluate_piece_sq_table(board);
-
-        material + position as i32
+        let check = if moves.len() == 0 {
+            let checkers = board.checkers();
+            if checkers.popcnt() >= 1 {
+                // let sq = checkers.to_square();
+                1000
+            } else { 0 }
+        } else { 0 };
+        material + position as i32 + check
     }
 }

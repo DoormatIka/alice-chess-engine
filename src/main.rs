@@ -2,7 +2,7 @@ extern crate vampirc_uci;
 
 use mimalloc::MiMalloc;
 
-use chess::{Board, BoardStatus};
+use chess::{Board, BoardStatus, Game};
 use uci::conversion::uci_move_to_chess_move;
 use std::str::FromStr;
 use std::time::Duration;
@@ -19,7 +19,6 @@ use crate::uci::conversion;
 
 pub mod bots;
 pub mod fen;
-pub mod game;
 pub mod moves;
 pub mod piece_sq_tables;
 pub mod types;
@@ -52,6 +51,7 @@ fn output_thread(
             };
             if let Some(board) = board {
                 let mut new_board = board.clone();
+                println!("{}", new_board);
                 for uci_move in moves {
                     if let Ok(chess_move) = uci_move_to_chess_move(&uci_move) {
                         if new_board.status() == BoardStatus::Ongoing && new_board.legal(chess_move) {
