@@ -12,6 +12,7 @@ pub fn generate_moves(board: &Board) -> (Vec<ChessMove>, Vec<ChessMove>) {
     let mut capture_moves: Vec<_> = vec![];
     let mut non_capture_moves: Vec<_> = vec![];
 
+
     legal_iterable.set_iterator_mask(*targets);
     for mov in &mut legal_iterable {
         capture_moves.push(mov);
@@ -21,6 +22,8 @@ pub fn generate_moves(board: &Board) -> (Vec<ChessMove>, Vec<ChessMove>) {
     for mov in &mut legal_iterable {
         non_capture_moves.push(mov);
     }
+
+
 
     return (capture_moves, non_capture_moves);
 }

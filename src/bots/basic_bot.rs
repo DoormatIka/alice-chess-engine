@@ -142,6 +142,11 @@ impl BasicBot {
         mut beta: i32,
         is_maximizing_player: bool,
     ) -> (i32, Option<ChessMove>) {
+        
+        if board.checkers().popcnt() != 0 {
+            return if is_maximizing_player { (1000000, None) } else { (-1000000, None) };
+        }
+
         if depth == 0 {
             let evaluation = self.evaluation(board);
             return (evaluation, None);
@@ -159,12 +164,16 @@ impl BasicBot {
             // it crashes with an unwrap now.
             if all_moves.len() == 0 {
                 if board.checkers().popcnt() != 0 {
+                    // Checkmate
                     return (1000000, None);
                 }
+                // Stalemate
                 return (0, None);
             }
             let mut best_val = -1000000;
+
             for board_move in all_moves.iter() {
+                // Crashes inside here
                 let board = board.make_move_new(*board_move);
                 let (eval, _) = self.internal_search(
                     &board,

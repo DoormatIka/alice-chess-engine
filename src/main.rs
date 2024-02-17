@@ -54,11 +54,9 @@ fn output_thread(
                 let mut new_board = board.clone();
                 for uci_move in moves {
                     if let Ok(chess_move) = uci_move_to_chess_move(&uci_move) {
-                        if new_board.status() == BoardStatus::Ongoing {
+                        if new_board.status() == BoardStatus::Ongoing && new_board.legal(chess_move) {
                             let temp_board = new_board.make_move_new(chess_move);
-                            if temp_board.status() == BoardStatus::Ongoing {
-                                new_board = temp_board;
-                            }
+                            new_board = temp_board;
                         }
                     }
                 }
@@ -182,3 +180,7 @@ fn main() {
         .expect("Main thread can't send to output/process thread");
     }
 }
+
+
+
+

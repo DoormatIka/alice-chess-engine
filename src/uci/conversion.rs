@@ -2,6 +2,7 @@
 use chess::{ChessMove, File, Piece, Rank, Square};
 use vampirc_uci::{UciMove, UciPiece, UciSquare};
 
+#[derive(Debug)]
 pub enum ConversionError {
     NumberUndefined,
     CharUndefined,
