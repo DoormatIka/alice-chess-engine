@@ -94,6 +94,8 @@ fn output_thread(
                     let (eval, chess_move) = bot.search(depth as u16);
                     let best_uci_move = conversion::chess_move_to_uci_move(&chess_move);
 
+                    println!("{:#?}", bot.get_debug_tree());
+
                     let depth_data = bot.uci.get_depth_data();
 
                     for index in (0..depth_data.len()).rev() {

@@ -136,6 +136,10 @@ impl BasicBot {
         material
     }
 
+    pub fn get_debug_tree(&self) -> &HashMap<String, Vec<String>> {
+        &self.node_ids
+    }
+
     pub fn internal_search(
         &mut self,
         board: &Board,
@@ -152,9 +156,6 @@ impl BasicBot {
             let evaluation = self.evaluation(board, &all_moves);
             return (evaluation, None);
         }
-        let mut node_id = if let Some(previous_move) = previous_move {
-            self.node_ids.get_mut(&format!("{}-{}", board.to_string(), previous_move.to_string()))
-        } else { None };
 
         let mut best_move = all_moves.get(0).map(|f| f.clone()); // Store the first move as the best move initially
         if is_maximizing_player {
@@ -175,9 +176,16 @@ impl BasicBot {
                 //
                 // Note: this has an extremely hard performance impact. this is only enabled for
                 // debugging purposes.
-                match node_id {
-                    Some(node_id) => node_id.push(format!("{}-{}", board.to_string(), board_move.to_string())),
-                    None => {self.node_ids.insert(format!("{}", board.to_string()), vec![format!("{}-{}", board.to_string(), board_move.to_string())]);}
+                if let Some(previous_move) = previous_move {
+                    let node_id = self.node_ids.get_mut(&format!("{}-{}", board.to_string(), previous_move.to_string()));
+                    match node_id {
+                        Some(node_id) => {
+                            node_id.push(format!("{}-{}", board.to_string(), previous_move.to_string()))
+                        },
+                        None => {
+                            self.node_ids.insert(format!("{}-{}", board.to_string(), previous_move.to_string()), vec![format!("{}-{}", board.to_string(), board_move.to_string())]);
+                        }
+                    };
                 };
 
                 let board = board.make_move_new(*board_move);
@@ -207,9 +215,16 @@ impl BasicBot {
             let mut best_val = 1000000;
     
             for board_move in all_moves.iter() {
+                let node_id = if let Some(previous_move) = previous_move {
+                    self.node_ids.get_mut(&format!("{}-{}", board.to_string(), previous_move.to_string()))
+                } else { None };
                 match node_id {
-                    Some(node_id) => node_id.push(format!("{}-{}", board.to_string(), board_move.to_string())),
-                    None => {self.node_ids.insert(format!("{}", board.to_string()), vec![format!("{}-{}", board.to_string(), board_move.to_string())]);}
+                    Some(node_id) => {
+                        node_id.push(format!("{}-{}", board.to_string(), board_move.to_string()))
+                    },
+                    None => {
+                        self.node_ids.insert(format!("{}", board.to_string()), vec![format!("{}-{}", board.to_string(), board_move.to_string())]);
+                    }
                 };
 
                 let board = board.make_move_new(*board_move);
