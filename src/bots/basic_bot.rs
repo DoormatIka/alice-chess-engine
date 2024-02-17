@@ -5,11 +5,13 @@ use crate::{bots::bot_traits::Evaluation, moves::move_gen::generate_moves};
 
 use chess::{Board, ChessMove, Color, Piece, ALL_SQUARES};
 use std::cmp;
+use std::collections::HashMap;
 
 pub struct BasicBot {
     pub board: Board,
-    pesto: (ColoredTables, ColoredTables),
     pub uci: Uci,
+    pesto: (ColoredTables, ColoredTables),
+    node_ids: HashMap<String, Vec<String>> // [fen + moves]
 }
 
 impl BasicBot {
@@ -18,6 +20,7 @@ impl BasicBot {
             board: board.clone(),
             pesto: create_pesto_piece_sqaure(),
             uci: Uci::default(),
+            node_ids: HashMap::new(),
         }
     }
 
@@ -141,6 +144,7 @@ impl BasicBot {
         mut alpha: i32,
         mut beta: i32,
         is_maximizing_player: bool,
+        previous_move: Option<ChessMove>,
     ) -> (i32, Option<ChessMove>) {
         let all_moves = generate_moves(&board);
 
@@ -148,30 +152,43 @@ impl BasicBot {
             let evaluation = self.evaluation(board, &all_moves);
             return (evaluation, None);
         }
+        let mut node_id = if let Some(previous_move) = previous_move {
+            self.node_ids.get_mut(&format!("{}-{}", board.to_string(), previous_move.to_string()))
+        } else { None };
 
-        /*
-        let checkers = board.checkers();
-        if checkers.popcnt() >= 1 {
-            let sq = checkers.to_square();
-            if let Some(color) = board.color_on(sq) {
-                // we can do something with this.
-            }
-        }
-        */
-    
         let mut best_move = all_moves.get(0).map(|f| f.clone()); // Store the first move as the best move initially
         if is_maximizing_player {
             let mut best_val = -1000000;
     
             for board_move in all_moves.iter() {
+                // currently trying to do this structure:
+                // {
+                //      [fen - next move] => [updated_fen - next move, ...]
+                //      [updated_fen - next move] => [more updated_fen - next move, ...]
+                // }
+                // 
+                // e.g:
+                // {
+                //      [4k3/8/8/8/8/8/8/4K3 w - - 0 1 - e1e2] => [4k3/8/8/8/8/8/4K3/8 w HAha - 0 1 - e8e7, ...]
+                //      [8/4k3/8/8/8/8/4K3/8 w HAha - 0 1 - e2e3] => [...]
+                // }
+                //
+                // Note: this has an extremely hard performance impact. this is only enabled for
+                // debugging purposes.
+                match node_id {
+                    Some(node_id) => node_id.push(format!("{}-{}", board.to_string(), board_move.to_string())),
+                    None => {self.node_ids.insert(format!("{}", board.to_string()), vec![format!("{}-{}", board.to_string(), board_move.to_string())]);}
+                };
+
                 let board = board.make_move_new(*board_move);
-                let (mut eval, _) = self.internal_search(
+                let (eval, _) = self.internal_search(
                     &board,
                     max_depth,
                     depth - 1,
                     alpha,
                     beta,
                     !is_maximizing_player,
+                    Some(*board_move),
                 );
     
                 if eval > best_val {
@@ -190,14 +207,20 @@ impl BasicBot {
             let mut best_val = 1000000;
     
             for board_move in all_moves.iter() {
+                match node_id {
+                    Some(node_id) => node_id.push(format!("{}-{}", board.to_string(), board_move.to_string())),
+                    None => {self.node_ids.insert(format!("{}", board.to_string()), vec![format!("{}-{}", board.to_string(), board_move.to_string())]);}
+                };
+
                 let board = board.make_move_new(*board_move);
-                let (mut eval, _) = self.internal_search(
+                let (eval, _) = self.internal_search(
                     &board,
                     max_depth,
                     depth - 1,
                     alpha,
                     beta,
                     !is_maximizing_player,
+                    Some(*board_move),
                 );
     
                 if eval < best_val {
@@ -211,6 +234,7 @@ impl BasicBot {
                     break;
                 }
             }
+
             (best_val, best_move)
         }
     }
