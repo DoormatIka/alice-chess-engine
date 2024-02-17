@@ -143,10 +143,7 @@ impl BasicBot {
         is_maximizing_player: bool,
     ) -> (i32, Option<ChessMove>) {
         if depth == 0 {
-            let mut evaluation = self.evaluation(board);
-            if !is_maximizing_player {
-                evaluation *= -1;
-            }
+            let evaluation = self.evaluation(board);
             return (evaluation, None);
         }
     
