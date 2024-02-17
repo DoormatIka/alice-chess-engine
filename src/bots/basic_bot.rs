@@ -142,40 +142,26 @@ impl BasicBot {
         mut beta: i32,
         is_maximizing_player: bool,
     ) -> (i32, Option<ChessMove>) {
-        
-        if board.checkers().popcnt() != 0 {
-            return if is_maximizing_player { (1000000, None) } else { (-1000000, None) };
-        }
-
         if depth == 0 {
-            let evaluation = self.evaluation(board);
+            let mut evaluation = self.evaluation(board);
+            if !is_maximizing_player {
+                evaluation *= -1;
+            }
             return (evaluation, None);
         }
-
+    
         let (mut capture_moves, mut non_capture_moves) = generate_moves(&board);
         let mut all_moves: Vec<ChessMove> = vec![];
         all_moves.append(&mut capture_moves);
         all_moves.append(&mut non_capture_moves);
-
-
+    
         let mut best_move = all_moves.get(0).map(|f| f.clone()); // Store the first move as the best move initially
         if is_maximizing_player {
-            // issues with bot avoiding checkmates.
-            // it crashes with an unwrap now.
-            if all_moves.len() == 0 {
-                if board.checkers().popcnt() != 0 {
-                    // Checkmate
-                    return (1000000, None);
-                }
-                // Stalemate
-                return (0, None);
-            }
             let mut best_val = -1000000;
-
+    
             for board_move in all_moves.iter() {
-                // Crashes inside here
                 let board = board.make_move_new(*board_move);
-                let (eval, _) = self.internal_search(
+                let (mut eval, _) = self.internal_search(
                     &board,
                     max_depth,
                     depth - 1,
@@ -183,37 +169,34 @@ impl BasicBot {
                     beta,
                     !is_maximizing_player,
                 );
-
+    
+                // If the move results in a check, give a bonus
+                if board.checkers().popcnt() != 0 {
+                    eval += 1000;
+                }
+    
                 if eval > beta {
-                    // assuming the opponent would never let the player reach this position
-                    //      i.e: "failing high"
                     return (beta, best_move);
                 }
-
+    
                 if eval > best_val {
                     best_val = eval;
                     best_move = Some(*board_move);
                     self.uci.update_depth_data(depth, max_depth, best_move);
                 }
                 alpha = cmp::max(alpha, best_val);
-
+    
                 if beta <= alpha {
                     break;
                 }
             }
             (best_val, best_move)
         } else {
-            if all_moves.len() == 0 {
-                if board.checkers().popcnt() != 0 {
-                    return (-1000000, None);
-                }
-                return (0, None);
-            }
             let mut best_val = 1000000;
-
+    
             for board_move in all_moves.iter() {
                 let board = board.make_move_new(*board_move);
-                let (eval, _) = self.internal_search(
+                let (mut eval, _) = self.internal_search(
                     &board,
                     max_depth,
                     depth - 1,
@@ -221,21 +204,23 @@ impl BasicBot {
                     beta,
                     !is_maximizing_player,
                 );
-
+    
+                // If the move results in a check, give a penalty
+                if board.checkers().popcnt() != 0 {
+                    eval -= 1000;
+                }
+    
                 if eval < alpha {
-                    // assuming the opponent would never let the player reach this position
-                    //      i.e: "failing high"
-                    // same as the maximizing player but just in reverse.
                     return (alpha, best_move);
                 }
-
+    
                 if eval < best_val {
                     best_val = eval;
                     best_move = Some(*board_move);
                     self.uci.update_depth_data(depth, max_depth, best_move);
                 }
                 beta = cmp::min(beta, best_val);
-
+    
                 if beta <= alpha {
                     break;
                 }
