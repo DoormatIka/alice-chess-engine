@@ -152,15 +152,17 @@ impl BasicBot {
         all_moves.append(&mut capture_moves);
         all_moves.append(&mut non_capture_moves);
 
-        if all_moves.len() == 0 {
-            if board.checkers().popcnt() != 0 {
-                return (-1000000, None);
-            }
-            return (0, None);
-        }
 
-        let mut best_move = Some(all_moves[0]); // Store the first move as the best move initially
+        let mut best_move = all_moves.get(0).map(|f| f.clone()); // Store the first move as the best move initially
         if is_maximizing_player {
+            // issues with bot avoiding checkmates.
+            // it crashes with an unwrap now.
+            if all_moves.len() == 0 {
+                if board.checkers().popcnt() != 0 {
+                    return (1000000, None);
+                }
+                return (0, None);
+            }
             let mut best_val = -1000000;
             for board_move in all_moves.iter() {
                 let board = board.make_move_new(*board_move);
@@ -192,6 +194,12 @@ impl BasicBot {
             }
             (best_val, best_move)
         } else {
+            if all_moves.len() == 0 {
+                if board.checkers().popcnt() != 0 {
+                    return (-1000000, None);
+                }
+                return (0, None);
+            }
             let mut best_val = 1000000;
 
             for board_move in all_moves.iter() {
