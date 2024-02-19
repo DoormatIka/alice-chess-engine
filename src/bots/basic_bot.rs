@@ -4,15 +4,17 @@ use crate::uci::uci::Uci;
 use crate::{bots::bot_traits::Evaluation, moves::move_gen::generate_moves};
 
 use chess::{Board, ChessMove, Color, Piece, ALL_SQUARES};
+use serde_json::to_string;
 use std::cmp;
 use std::collections::HashMap;
 use std::fs::File;
+use std::io::Write;
 
 pub struct BasicBot {
     pub board: Board,
     pub uci: Uci,
     pesto: (ColoredTables, ColoredTables),
-    node_ids: HashMap<String, Vec<String>> // [fen + moves]
+    node_ids: HashMap<String, Vec<String>>, // [fen + moves]
 }
 
 impl BasicBot {
@@ -26,7 +28,6 @@ impl BasicBot {
     }
 
     pub fn evaluate_material_advantage(&self, board: &Board) -> i32 {
-
         let white = PiecesColored::get_colored_pieces(&board, Color::White);
         let black = PiecesColored::get_colored_pieces(&board, Color::Black);
 
@@ -141,9 +142,13 @@ impl BasicBot {
         &self.node_ids
     }
     pub fn write_debug_tree_to_file(&self) -> std::io::Result<()> {
-        let mut file = File::create("debug_tree.txt")?;
+        let mut file = std::fs::File::create("debug_tree.txt")?;
 
-        // Small can you stringify &self.node_ids.
+        let node_ids_string = to_string(&self.node_ids).unwrap();
+    
+        let node_ids_string = format!("{}\n", node_ids_string);
+    
+        file.write_all(node_ids_string.as_bytes())?;
 
         Ok(())
     }
@@ -168,14 +173,14 @@ impl BasicBot {
         let mut best_move = all_moves.get(0).map(|f| f.clone()); // Store the first move as the best move initially
         if is_maximizing_player {
             let mut best_val = -1000000;
-    
+
             for board_move in all_moves.iter() {
                 // currently trying to do this structure:
                 // {
                 //      [fen - next move] => [updated_fen - next move, ...]
                 //      [updated_fen - next move] => [more updated_fen - next move, ...]
                 // }
-                // 
+                //
                 // e.g:
                 // {
                 //      [4k3/8/8/8/8/8/8/4K3 w - - 0 1 - e1e2] => [4k3/8/8/8/8/8/4K3/8 w HAha - 0 1 - e8e7, ...]
@@ -189,16 +194,33 @@ impl BasicBot {
                 let board = board.make_move_new(*board_move);
 
                 if let Some(previous_move) = previous_move {
-                    let node_id = self.node_ids.get_mut(
-                        &format!("{}-{}-{}", previous_board.to_string(), previous_move.to_string(), depth));
+                    let node_id = self.node_ids.get_mut(&format!(
+                        "{}-{}-{}",
+                        previous_board.to_string(),
+                        previous_move.to_string(),
+                        depth
+                    ));
                     match node_id {
-                        Some(node_id) => {
-                            node_id.push(format!("{}-{}-{}", board.to_string(), board_move.to_string(), cmp::max(depth - 1, 0)))
-                        },
+                        Some(node_id) => node_id.push(format!(
+                            "{}-{}-{}",
+                            board.to_string(),
+                            board_move.to_string(),
+                            cmp::max(depth - 1, 0)
+                        )),
                         None => {
                             self.node_ids.insert(
-                                format!("{}-{}-{}", previous_board.to_string(), previous_move.to_string(), depth),
-                                vec![format!("{}-{}-{}", board.to_string(), board_move.to_string(), cmp::max(depth - 1, 0))]
+                                format!(
+                                    "{}-{}-{}",
+                                    previous_board.to_string(),
+                                    previous_move.to_string(),
+                                    depth
+                                ),
+                                vec![format!(
+                                    "{}-{}-{}",
+                                    board.to_string(),
+                                    board_move.to_string(),
+                                    cmp::max(depth - 1, 0)
+                                )],
                             );
                         }
                     };
@@ -213,14 +235,14 @@ impl BasicBot {
                     !is_maximizing_player,
                     Some(*board_move),
                 );
-    
+
                 if eval > best_val {
                     best_val = eval;
                     best_move = Some(*board_move);
                     self.uci.update_depth_data(depth, max_depth, best_move);
                 }
                 alpha = cmp::max(alpha, best_val);
-    
+
                 if beta <= alpha {
                     break;
                 }
@@ -228,22 +250,39 @@ impl BasicBot {
             (best_val, best_move)
         } else {
             let mut best_val = 1000000;
-    
+
             for board_move in all_moves.iter() {
                 let previous_board = board.clone();
                 let board = board.make_move_new(*board_move);
 
                 if let Some(previous_move) = previous_move {
-                    let node_id = self.node_ids.get_mut(
-                        &format!("{}-{}-{}", previous_board.to_string(), previous_move.to_string(), depth));
+                    let node_id = self.node_ids.get_mut(&format!(
+                        "{}-{}-{}",
+                        previous_board.to_string(),
+                        previous_move.to_string(),
+                        depth
+                    ));
                     match node_id {
-                        Some(node_id) => {
-                            node_id.push(format!("{}-{}-{}", board.to_string(), board_move.to_string(), cmp::max(depth - 1, 0)))
-                        },
+                        Some(node_id) => node_id.push(format!(
+                            "{}-{}-{}",
+                            board.to_string(),
+                            board_move.to_string(),
+                            cmp::max(depth - 1, 0)
+                        )),
                         None => {
                             self.node_ids.insert(
-                                format!("{}-{}-{}", previous_board.to_string(), previous_move.to_string(), depth),
-                                vec![format!("{}-{}-{}", board.to_string(), board_move.to_string(), cmp::max(depth - 1, 0))]
+                                format!(
+                                    "{}-{}-{}",
+                                    previous_board.to_string(),
+                                    previous_move.to_string(),
+                                    depth
+                                ),
+                                vec![format!(
+                                    "{}-{}-{}",
+                                    board.to_string(),
+                                    board_move.to_string(),
+                                    cmp::max(depth - 1, 0)
+                                )],
                             );
                         }
                     };
@@ -258,14 +297,14 @@ impl BasicBot {
                     !is_maximizing_player,
                     Some(*board_move),
                 );
-    
+
                 if eval < best_val {
                     best_val = eval;
                     best_move = Some(*board_move);
                     self.uci.update_depth_data(depth, max_depth, best_move);
                 }
                 beta = cmp::min(beta, best_val);
-    
+
                 if beta <= alpha {
                     break;
                 }

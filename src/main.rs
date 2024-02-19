@@ -3,9 +3,9 @@ extern crate vampirc_uci;
 use mimalloc::MiMalloc;
 
 use chess::{Board, BoardStatus, Game};
-use uci::conversion::uci_move_to_chess_move;
 use std::str::FromStr;
 use std::time::Duration;
+use uci::conversion::uci_move_to_chess_move;
 use vampirc_uci::{parse, UciInfoAttribute, UciMessage, UciTimeControl};
 
 use std::io::stdin;
@@ -27,11 +27,7 @@ pub mod uci;
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
 
-fn output_thread(
-    out: UciMessage, 
-    out_board: &mut Board,
-    toggle_ready_ok: &Arc<RwLock<bool>>,
-) {
+fn output_thread(out: UciMessage, out_board: &mut Board, toggle_ready_ok: &Arc<RwLock<bool>>) {
     match out {
         UciMessage::Uci => {
             println!("id name Cirno");
@@ -43,7 +39,11 @@ fn output_thread(
             *toggle_ready_ok.write().unwrap() = true;
         }
 
-        UciMessage::Position { startpos, fen, moves } => {
+        UciMessage::Position {
+            startpos,
+            fen,
+            moves,
+        } => {
             let board = if startpos {
                 Some(Board::default())
             } else {
@@ -54,7 +54,8 @@ fn output_thread(
                 // println!("{}", new_board);
                 for uci_move in moves {
                     if let Ok(chess_move) = uci_move_to_chess_move(&uci_move) {
-                        if new_board.status() == BoardStatus::Ongoing && new_board.legal(chess_move) {
+                        if new_board.status() == BoardStatus::Ongoing && new_board.legal(chess_move)
+                        {
                             let temp_board = new_board.make_move_new(chess_move);
                             new_board = temp_board;
                         }
@@ -96,6 +97,7 @@ fn output_thread(
 
                     let depth_data = bot.uci.get_depth_data();
                     let debug_tree = bot.get_debug_tree();
+                    bot.write_debug_tree_to_file();
                     println!("{:#?}", debug_tree);
 
                     for index in (0..depth_data.len()).rev() {
@@ -182,7 +184,3 @@ fn main() {
         .expect("Main thread can't send to output/process thread");
     }
 }
-
-
-
-

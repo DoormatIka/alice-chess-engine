@@ -1,4 +1,3 @@
-
 use chess::{ChessMove, File, Piece, Rank, Square};
 use vampirc_uci::{UciMove, UciPiece, UciSquare};
 
@@ -94,7 +93,9 @@ pub fn chess_move_to_uci_move(chess_move: &ChessMove) -> UciMove {
         chess_move.get_dest().get_file(),
         chess_move.get_dest().get_rank(),
     );
-    let promotion = chess_move.get_promotion().map(|promotion| chess_piece_to_uci_piece(&promotion));
+    let promotion = chess_move
+        .get_promotion()
+        .map(|promotion| chess_piece_to_uci_piece(&promotion));
 
     UciMove {
         from: UciSquare {
@@ -110,13 +111,21 @@ pub fn chess_move_to_uci_move(chess_move: &ChessMove) -> UciMove {
 }
 
 pub fn uci_move_to_chess_move(uci_move: &UciMove) -> Result<ChessMove, ConversionError> {
-    let (from_file, from_rank) = ( char_to_file(uci_move.from.file)?, number_to_rank(uci_move.from.rank)? );
-    let (to_file, to_rank) = ( char_to_file(uci_move.to.file)?, number_to_rank(uci_move.to.rank)? );
-    let promotion = uci_move.promotion.map(|promotion| uci_piece_to_chess_piece(&promotion));
+    let (from_file, from_rank) = (
+        char_to_file(uci_move.from.file)?,
+        number_to_rank(uci_move.from.rank)?,
+    );
+    let (to_file, to_rank) = (
+        char_to_file(uci_move.to.file)?,
+        number_to_rank(uci_move.to.rank)?,
+    );
+    let promotion = uci_move
+        .promotion
+        .map(|promotion| uci_piece_to_chess_piece(&promotion));
 
     Ok(ChessMove::new(
-        Square::make_square(from_rank, from_file), 
-        Square::make_square(to_rank, to_file), 
-        promotion
+        Square::make_square(from_rank, from_file),
+        Square::make_square(to_rank, to_file),
+        promotion,
     ))
 }

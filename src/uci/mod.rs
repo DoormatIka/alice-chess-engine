@@ -1,2 +1,2 @@
-pub mod uci;
 pub mod conversion;
+pub mod uci;
