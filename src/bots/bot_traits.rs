@@ -1,5 +1,5 @@
 use crate::bots::basic_bot::BasicBot;
-use chess::{Board, ChessMove, Color};
+use chess::{Board, ChessMove};
 
 use std::time::Instant;
 
@@ -19,7 +19,12 @@ impl Search for BasicBot {
             self.internal_search(&board, depth, depth, alpha, beta, true, None);
         self.uci.set_ms_passed(start.elapsed().as_millis() as u64);
 
-        (best_eval, best_move.unwrap())
+        let best_move = match best_move {
+            Some(best_move) => best_move,
+            None => panic!("Something went wrong with searching the best move."),
+        };
+
+        (best_eval, best_move)
     }
 }
 

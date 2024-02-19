@@ -142,7 +142,7 @@ impl BasicBot {
         &self.node_ids
     }
     pub fn write_debug_tree_to_file(&self) -> std::io::Result<()> {
-        let mut file = std::fs::File::create("debug_tree.txt")?;
+        let mut file = std::fs::File::create("debug_tree.json")?;
 
         let node_ids_string = to_string(&self.node_ids).unwrap();
     
