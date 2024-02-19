@@ -51,7 +51,7 @@ fn output_thread(
             };
             if let Some(board) = board {
                 let mut new_board = board.clone();
-                println!("{}", new_board);
+                // println!("{}", new_board);
                 for uci_move in moves {
                     if let Ok(chess_move) = uci_move_to_chess_move(&uci_move) {
                         if new_board.status() == BoardStatus::Ongoing && new_board.legal(chess_move) {
@@ -94,9 +94,9 @@ fn output_thread(
                     let (eval, chess_move) = bot.search(depth as u16);
                     let best_uci_move = conversion::chess_move_to_uci_move(&chess_move);
 
-                    println!("{:#?}", bot.get_debug_tree());
-
                     let depth_data = bot.uci.get_depth_data();
+                    let debug_tree = bot.get_debug_tree();
+                    println!("{:#?}", debug_tree);
 
                     for index in (0..depth_data.len()).rev() {
                         let data = &depth_data[index];

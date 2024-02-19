@@ -176,19 +176,26 @@ impl BasicBot {
                 //
                 // Note: this has an extremely hard performance impact. this is only enabled for
                 // debugging purposes.
+
+                let previous_board = board.clone();
+                let board = board.make_move_new(*board_move);
+
                 if let Some(previous_move) = previous_move {
-                    let node_id = self.node_ids.get_mut(&format!("{}-{}", board.to_string(), previous_move.to_string()));
+                    let node_id = self.node_ids.get_mut(
+                        &format!("{}-{}-{}", previous_board.to_string(), previous_move.to_string(), depth));
                     match node_id {
                         Some(node_id) => {
-                            node_id.push(format!("{}-{}", board.to_string(), previous_move.to_string()))
+                            node_id.push(format!("{}-{}-{}", board.to_string(), board_move.to_string(), cmp::max(depth - 1, 0)))
                         },
                         None => {
-                            self.node_ids.insert(format!("{}-{}", board.to_string(), previous_move.to_string()), vec![format!("{}-{}", board.to_string(), board_move.to_string())]);
+                            self.node_ids.insert(
+                                format!("{}-{}-{}", previous_board.to_string(), previous_move.to_string(), depth),
+                                vec![format!("{}-{}-{}", board.to_string(), board_move.to_string(), cmp::max(depth - 1, 0))]
+                            );
                         }
                     };
                 };
 
-                let board = board.make_move_new(*board_move);
                 let (eval, _) = self.internal_search(
                     &board,
                     max_depth,
@@ -215,19 +222,25 @@ impl BasicBot {
             let mut best_val = 1000000;
     
             for board_move in all_moves.iter() {
-                let node_id = if let Some(previous_move) = previous_move {
-                    self.node_ids.get_mut(&format!("{}-{}", board.to_string(), previous_move.to_string()))
-                } else { None };
-                match node_id {
-                    Some(node_id) => {
-                        node_id.push(format!("{}-{}", board.to_string(), board_move.to_string()))
-                    },
-                    None => {
-                        self.node_ids.insert(format!("{}", board.to_string()), vec![format!("{}-{}", board.to_string(), board_move.to_string())]);
-                    }
+                let previous_board = board.clone();
+                let board = board.make_move_new(*board_move);
+
+                if let Some(previous_move) = previous_move {
+                    let node_id = self.node_ids.get_mut(
+                        &format!("{}-{}-{}", previous_board.to_string(), previous_move.to_string(), depth));
+                    match node_id {
+                        Some(node_id) => {
+                            node_id.push(format!("{}-{}-{}", board.to_string(), board_move.to_string(), cmp::max(depth - 1, 0)))
+                        },
+                        None => {
+                            self.node_ids.insert(
+                                format!("{}-{}-{}", previous_board.to_string(), previous_move.to_string(), depth),
+                                vec![format!("{}-{}-{}", board.to_string(), board_move.to_string(), cmp::max(depth - 1, 0))]
+                            );
+                        }
+                    };
                 };
 
-                let board = board.make_move_new(*board_move);
                 let (eval, _) = self.internal_search(
                     &board,
                     max_depth,
