@@ -6,6 +6,7 @@ use crate::{bots::bot_traits::Evaluation, moves::move_gen::generate_moves};
 use chess::{Board, ChessMove, Color, Piece, ALL_SQUARES};
 use std::cmp;
 use std::collections::HashMap;
+use std::fs::File;
 
 pub struct BasicBot {
     pub board: Board,
@@ -138,6 +139,13 @@ impl BasicBot {
 
     pub fn get_debug_tree(&self) -> &HashMap<String, Vec<String>> {
         &self.node_ids
+    }
+    pub fn write_debug_tree_to_file(&self) -> std::io::Result<()> {
+        let mut file = File::create("debug_tree.txt")?;
+
+        // Small can you stringify &self.node_ids.
+
+        Ok(())
     }
 
     pub fn internal_search(
