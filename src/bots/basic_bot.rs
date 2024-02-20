@@ -175,56 +175,13 @@ impl BasicBot {
             let mut best_val = -1000000;
 
             for board_move in all_moves.iter() {
-                // currently trying to do this structure:
-                // {
-                //      [fen - next move] => [updated_fen - next move, ...]
-                //      [updated_fen - next move] => [more updated_fen - next move, ...]
-                // }
-                //
-                // e.g:
-                // {
-                //      [4k3/8/8/8/8/8/8/4K3 w - - 0 1 - e1e2] => [4k3/8/8/8/8/8/4K3/8 w HAha - 0 1 - e8e7, ...]
-                //      [8/4k3/8/8/8/8/4K3/8 w HAha - 0 1 - e2e3] => [...]
-                // }
-                //
-                // Note: this has an extremely hard performance impact. this is only enabled for
-                // debugging purposes.
 
                 let previous_board = board.clone();
                 let board = board.make_move_new(*board_move);
 
-                if let Some(previous_move) = previous_move {
-                    let node_id = self.node_ids.get_mut(&format!(
-                        "{}-{}-{}",
-                        previous_board.to_string(),
-                        previous_move.to_string(),
-                        depth
-                    ));
-                    match node_id {
-                        Some(node_id) => node_id.push(format!(
-                            "{}-{}-{}",
-                            board.to_string(),
-                            board_move.to_string(),
-                            cmp::max(depth - 1, 0)
-                        )),
-                        None => {
-                            self.node_ids.insert(
-                                format!(
-                                    "{}-{}-{}",
-                                    previous_board.to_string(),
-                                    previous_move.to_string(),
-                                    depth
-                                ),
-                                vec![format!(
-                                    "{}-{}-{}",
-                                    board.to_string(),
-                                    board_move.to_string(),
-                                    cmp::max(depth - 1, 0)
-                                )],
-                            );
-                        }
-                    };
-                };
+                // Note: this has an extremely hard performance impact. this is only enabled for
+                // debugging purposes.
+                self.push_node(&previous_board, previous_move, &board, board_move, depth);
 
                 let (eval, _) = self.internal_search(
                     &board,
@@ -255,38 +212,7 @@ impl BasicBot {
                 let previous_board = board.clone();
                 let board = board.make_move_new(*board_move);
 
-                if let Some(previous_move) = previous_move {
-                    let node_id = self.node_ids.get_mut(&format!(
-                        "{}-{}-{}",
-                        previous_board.to_string(),
-                        previous_move.to_string(),
-                        depth
-                    ));
-                    match node_id {
-                        Some(node_id) => node_id.push(format!(
-                            "{}-{}-{}",
-                            board.to_string(),
-                            board_move.to_string(),
-                            cmp::max(depth - 1, 0)
-                        )),
-                        None => {
-                            self.node_ids.insert(
-                                format!(
-                                    "{}-{}-{}",
-                                    previous_board.to_string(),
-                                    previous_move.to_string(),
-                                    depth
-                                ),
-                                vec![format!(
-                                    "{}-{}-{}",
-                                    board.to_string(),
-                                    board_move.to_string(),
-                                    cmp::max(depth - 1, 0)
-                                )],
-                            );
-                        }
-                    };
-                };
+                self.push_node(&previous_board, previous_move, &board, board_move, depth);
 
                 let (eval, _) = self.internal_search(
                     &board,
@@ -311,6 +237,68 @@ impl BasicBot {
             }
 
             (best_val, best_move)
+        }
+    }
+    
+    fn push_node(
+        &mut self,
+        previous_board: &Board,
+        previous_move: Option<ChessMove>,
+        board: &Board,
+        board_move: &ChessMove,
+        depth: u16,
+    ) {
+        if let Some(previous_move) = previous_move {
+            let node_id = self.node_ids.get_mut(&format!(
+                "{}-{}-{}",
+                previous_board.to_string(),
+                previous_move.to_string(),
+                depth
+            ));
+            match node_id {
+                Some(node_id) => node_id.push(format!(
+                    "{}-{}-{}",
+                    board.to_string(),
+                    board_move.to_string(),
+                    cmp::max(depth - 1, 0)
+                )),
+                None => {
+                    self.node_ids.insert(
+                        format!(
+                            "{}-{}-{}",
+                            previous_board.to_string(),
+                            previous_move.to_string(),
+                            depth
+                        ),
+                        vec![format!(
+                            "{}-{}-{}",
+                            board.to_string(),
+                            board_move.to_string(),
+                            cmp::max(depth - 1, 0)
+                        )],
+                    );
+                }
+            };
+        } else {
+            // it won't have a previous move if it's the very first node in the tree.
+            let node_id = self.node_ids.get_mut(&format!("top"));
+            match node_id {
+                Some(node_id) => node_id.push(format!(
+                    "{}-{}-{}",
+                    board.to_string(),
+                    board_move.to_string(),
+                    cmp::max(depth - 1, 0)
+                )),
+                None => {self.node_ids.insert(
+                    format!("top"),
+                    vec![format!(
+                        "{}-{}-{}",
+                        board.to_string(),
+                        board_move.to_string(),
+                        cmp::max(depth - 1, 0)
+                    )],
+                );},
+            };
         }
     }
 }
