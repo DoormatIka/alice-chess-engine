@@ -14,7 +14,16 @@ pub struct BasicBot {
     pub board: Board,
     pub uci: Uci,
     pesto: (ColoredTables, ColoredTables),
-    node_ids: HashMap<String, Vec<String>>, // [fen + moves]
+    node_connections: HashMap<String, Vec<String>>, // [fen + moves]
+    node_information: HashMap<String, NodeInfo>
+}
+
+struct NodeInfo {
+    evaluation: i32,
+    best_move: Option<ChessMove>,
+    alpha: i32,
+    beta: i32, 
+    is_maximizing_player: bool,
 }
 
 impl BasicBot {
@@ -23,7 +32,8 @@ impl BasicBot {
             board: board.clone(),
             pesto: create_pesto_piece_sqaure(),
             uci: Uci::default(),
-            node_ids: HashMap::new(),
+            node_connections: HashMap::new(),
+            node_information: HashMap::new(),
         }
     }
 
@@ -139,16 +149,20 @@ impl BasicBot {
     }
 
     pub fn get_debug_tree(&self) -> &HashMap<String, Vec<String>> {
-        &self.node_ids
+        &self.node_connections
     }
     pub fn write_debug_tree_to_file(&self) -> std::io::Result<()> {
-        let mut file = std::fs::File::create("debug_tree.json")?;
+        let mut connections = std::fs::File::create("debug_tree_connections.json")?;
+        let mut information = std::fs::File::create("debug_tree_information.json")?;
 
-        let node_ids_string = to_string(&self.node_ids).unwrap();
-    
+        let node_ids_string = to_string(&self.node_connections).unwrap();
         let node_ids_string = format!("{}\n", node_ids_string);
+
+        // needs to implement serde::Serialize...
+        let info_ids_string = to_string(&self.node_information).unwrap();
+        let info_ids_string = format!("{}\n", info_ids_string);
     
-        file.write_all(node_ids_string.as_bytes())?;
+        connections.write_all(node_ids_string.as_bytes())?;
 
         Ok(())
     }
@@ -183,7 +197,7 @@ impl BasicBot {
                 // debugging purposes.
                 self.push_node(&previous_board, previous_move, &board, board_move, depth);
 
-                let (eval, _) = self.internal_search(
+                let (eval, best) = self.internal_search(
                     &board,
                     max_depth,
                     depth - 1,
@@ -192,6 +206,20 @@ impl BasicBot {
                     !is_maximizing_player,
                     Some(*board_move),
                 );
+                
+                let node_info = NodeInfo { 
+                    evaluation: eval, 
+                    best_move: best, 
+                    alpha, 
+                    beta, 
+                    is_maximizing_player,
+                };
+                self.node_information.insert(format!(
+                    "{}-{}-{}",
+                    board.to_string().replace("/", "#"),
+                    board_move.to_string(),
+                    cmp::max(depth - 1, 0)
+                ), node_info);
 
                 if eval > best_val {
                     best_val = eval;
@@ -249,30 +277,30 @@ impl BasicBot {
         depth: u16,
     ) {
         if let Some(previous_move) = previous_move {
-            let node_id = self.node_ids.get_mut(&format!(
+            let node_id = self.node_connections.get_mut(&format!(
                 "{}-{}-{}",
-                previous_board.to_string(),
+                previous_board.to_string().replace("/", "#"),
                 previous_move.to_string(),
                 depth
             ));
             match node_id {
                 Some(node_id) => node_id.push(format!(
                     "{}-{}-{}",
-                    board.to_string(),
+                    board.to_string().replace("/", "#"),
                     board_move.to_string(),
                     cmp::max(depth - 1, 0)
                 )),
                 None => {
-                    self.node_ids.insert(
+                    self.node_connections.insert(
                         format!(
                             "{}-{}-{}",
-                            previous_board.to_string(),
+                            previous_board.to_string().replace("/", "#"),
                             previous_move.to_string(),
                             depth
                         ),
                         vec![format!(
                             "{}-{}-{}",
-                            board.to_string(),
+                            board.to_string().replace("/", "#"),
                             board_move.to_string(),
                             cmp::max(depth - 1, 0)
                         )],
@@ -281,19 +309,19 @@ impl BasicBot {
             };
         } else {
             // it won't have a previous move if it's the very first node in the tree.
-            let node_id = self.node_ids.get_mut(&format!("top"));
+            let node_id = self.node_connections.get_mut(&format!("top"));
             match node_id {
                 Some(node_id) => node_id.push(format!(
                     "{}-{}-{}",
-                    board.to_string(),
+                    board.to_string().replace("/", "#"),
                     board_move.to_string(),
                     cmp::max(depth - 1, 0)
                 )),
-                None => {self.node_ids.insert(
+                None => {self.node_connections.insert(
                     format!("top"),
                     vec![format!(
                         "{}-{}-{}",
-                        board.to_string(),
+                        board.to_string().replace("/", "#"),
                         board_move.to_string(),
                         cmp::max(depth - 1, 0)
                     )],
