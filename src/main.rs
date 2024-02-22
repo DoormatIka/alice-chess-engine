@@ -51,7 +51,6 @@ fn output_thread(out: UciMessage, out_board: &mut Board, toggle_ready_ok: &Arc<R
             };
             if let Some(board) = board {
                 let mut new_board = board.clone();
-                // println!("{}", new_board);
                 for uci_move in moves {
                     if let Ok(chess_move) = uci_move_to_chess_move(&uci_move) {
                         if new_board.status() == BoardStatus::Ongoing && new_board.legal(chess_move)
@@ -96,7 +95,6 @@ fn output_thread(out: UciMessage, out_board: &mut Board, toggle_ready_ok: &Arc<R
                     let best_uci_move = conversion::chess_move_to_uci_move(&chess_move);
 
                     let depth_data = bot.uci.get_depth_data();
-                    bot.write_debug_tree_to_file().unwrap();
 
                     for index in (0..depth_data.len()).rev() {
                         let data = &depth_data[index];
