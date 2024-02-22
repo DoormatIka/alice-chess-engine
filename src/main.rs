@@ -96,7 +96,7 @@ fn output_thread(out: UciMessage, out_board: &mut Board, toggle_ready_ok: &Arc<R
                     let best_uci_move = conversion::chess_move_to_uci_move(&chess_move);
 
                     let depth_data = bot.uci.get_depth_data();
-                    bot.write_debug_tree_to_file().unwrap();
+                    // bot.write_debug_tree_to_file().unwrap();
 
                     for index in (0..depth_data.len()).rev() {
                         let data = &depth_data[index];
