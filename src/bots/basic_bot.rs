@@ -5,6 +5,7 @@ use crate::{bots::bot_traits::Evaluation, moves::move_gen::generate_moves};
 
 use chess::{Board, ChessMove, Color, Piece, ALL_SQUARES};
 use serde_json::to_string;
+use serde::Serialize;
 use std::cmp;
 use std::collections::HashMap;
 use std::fs::File;
@@ -18,9 +19,10 @@ pub struct BasicBot {
     node_information: HashMap<String, NodeInfo>
 }
 
+#[derive(Serialize, Debug)]
 struct NodeInfo {
     evaluation: i32,
-    best_move: Option<ChessMove>,
+    best_move: Option<String>,
     alpha: i32,
     beta: i32, 
     is_maximizing_player: bool,
@@ -163,6 +165,7 @@ impl BasicBot {
         let info_ids_string = format!("{}\n", info_ids_string);
     
         connections.write_all(node_ids_string.as_bytes())?;
+        information.write_all(info_ids_string.as_bytes())?;
 
         Ok(())
     }
@@ -209,17 +212,21 @@ impl BasicBot {
                 
                 let node_info = NodeInfo { 
                     evaluation: eval, 
-                    best_move: best, 
+                    best_move: best.map(|c| c.to_string()), 
                     alpha, 
                     beta, 
                     is_maximizing_player,
                 };
-                self.node_information.insert(format!(
-                    "{}-{}-{}",
-                    board.to_string().replace("/", "#"),
-                    board_move.to_string(),
-                    cmp::max(depth - 1, 0)
-                ), node_info);
+                if depth == max_depth {
+                    self.node_information.insert(format!("top"), node_info);
+                } else {
+                    self.node_information.insert(format!(
+                        "{}-{}-{}",
+                        board.to_string().replace("/", "#"),
+                        board_move.to_string(),
+                        cmp::max(depth - 1, 0)
+                    ), node_info);
+                }
 
                 if eval > best_val {
                     best_val = eval;
@@ -242,7 +249,7 @@ impl BasicBot {
 
                 self.push_node(&previous_board, previous_move, &board, board_move, depth);
 
-                let (eval, _) = self.internal_search(
+                let (eval, best) = self.internal_search(
                     &board,
                     max_depth,
                     depth - 1,
@@ -251,6 +258,24 @@ impl BasicBot {
                     !is_maximizing_player,
                     Some(*board_move),
                 );
+
+                let node_info = NodeInfo { 
+                    evaluation: eval, 
+                    best_move: best.map(|c| c.to_string()), 
+                    alpha, 
+                    beta, 
+                    is_maximizing_player,
+                };
+                if depth == max_depth {
+                    self.node_information.insert(format!("top"), node_info);
+                } else {
+                    self.node_information.insert(format!(
+                        "{}-{}-{}",
+                        board.to_string().replace("/", "#"),
+                        board_move.to_string(),
+                        cmp::max(depth - 1, 0)
+                    ), node_info);
+                }
 
                 if eval < best_val {
                     best_val = eval;
