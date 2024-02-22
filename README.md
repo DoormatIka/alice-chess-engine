@@ -8,7 +8,9 @@ Two programmers' second attempt at writing a chess engine.
     - Material Counting
     - Fail-High
     - Piece-square tables
+    - UCI (`go depth x` only)
 
 ### Todo
-  - UCI (Needed.)
+  - Quiescence Search
   - Iterative Deepening
+  - Move-Ordering (Static Exchange Evals)
