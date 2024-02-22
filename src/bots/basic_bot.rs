@@ -4,8 +4,6 @@ use crate::uci::uci::Uci;
 use crate::{bots::bot_traits::Evaluation, moves::move_gen::generate_moves};
 
 use chess::{Board, ChessMove, Color, Piece, ALL_SQUARES};
-use serde_json::to_string;
-use serde::Serialize;
 use std::cmp;
 use std::collections::HashMap;
 use std::fs::File;
@@ -15,17 +13,6 @@ pub struct BasicBot {
     pub board: Board,
     pub uci: Uci,
     pesto: (ColoredTables, ColoredTables),
-    node_connections: HashMap<String, Vec<String>>, // [fen + moves]
-    node_information: HashMap<String, NodeInfo>
-}
-
-#[derive(Serialize, Debug)]
-struct NodeInfo {
-    evaluation: i32,
-    best_move: Option<String>,
-    alpha: i32,
-    beta: i32, 
-    is_maximizing_player: bool,
 }
 
 impl BasicBot {
@@ -34,8 +21,6 @@ impl BasicBot {
             board: board.clone(),
             pesto: create_pesto_piece_sqaure(),
             uci: Uci::default(),
-            node_connections: HashMap::new(),
-            node_information: HashMap::new(),
         }
     }
 
@@ -149,25 +134,33 @@ impl BasicBot {
 
         material
     }
+    /**
+     * i do not know if this is beneficial.
+     */
+    pub fn evaluate_checkmate(&self, board: &Board, moves: &Vec<ChessMove>, is_maximizing_player: bool) -> i32 {
+        let check = if moves.len() == 0 {
+            let checkers = board.checkers();
+            if checkers.popcnt() >= 1 {
+                // checkmate
+                if is_maximizing_player {
+                    999999
+                } else {
+                    -999999
+                }
+            } else {
+                // stalemate. having no moves is worse than death.
+                if is_maximizing_player {
+                    999999
+                } else {
+                    -999999
+                }
+            }
+        } else {
+            // normal~
+            0
+        };
 
-    pub fn get_debug_tree(&self) -> &HashMap<String, Vec<String>> {
-        &self.node_connections
-    }
-    pub fn write_debug_tree_to_file(&self) -> std::io::Result<()> {
-        let mut connections = std::fs::File::create("debug_tree_connections.json")?;
-        let mut information = std::fs::File::create("debug_tree_information.json")?;
-
-        let node_ids_string = to_string(&self.node_connections).unwrap();
-        let node_ids_string = format!("{}\n", node_ids_string);
-
-        // needs to implement serde::Serialize...
-        let info_ids_string = to_string(&self.node_information).unwrap();
-        let info_ids_string = format!("{}\n", info_ids_string);
-    
-        connections.write_all(node_ids_string.as_bytes())?;
-        information.write_all(info_ids_string.as_bytes())?;
-
-        Ok(())
+        check
     }
 
     pub fn internal_search(
@@ -183,7 +176,7 @@ impl BasicBot {
         let all_moves = generate_moves(&board);
 
         if depth == 0 {
-            let evaluation = self.evaluation(board, &all_moves);
+            let evaluation = self.evaluation(board, &all_moves, is_maximizing_player);
             return (evaluation, None);
         }
 
@@ -231,7 +224,7 @@ impl BasicBot {
                     self.uci.update_depth_data(depth, max_depth, best_move);
                 }
 
-                if beta <= alpha {
+                if alpha <= beta {
                     break;
                 }
             }
@@ -240,65 +233,4 @@ impl BasicBot {
         }
     }
     
-    fn push_node(
-        &mut self,
-        previous_board: &Board,
-        previous_move: Option<ChessMove>,
-        board: &Board,
-        board_move: &ChessMove,
-        depth: u16,
-    ) {
-        if let Some(previous_move) = previous_move {
-            let node_id = self.node_connections.get_mut(&format!(
-                "{}-{}-{}",
-                previous_board.to_string().replace("/", "#"),
-                previous_move.to_string(),
-                depth
-            ));
-            match node_id {
-                Some(node_id) => node_id.push(format!(
-                    "{}-{}-{}",
-                    board.to_string().replace("/", "#"),
-                    board_move.to_string(),
-                    cmp::max(depth - 1, 0)
-                )),
-                None => {
-                    self.node_connections.insert(
-                        format!(
-                            "{}-{}-{}",
-                            previous_board.to_string().replace("/", "#"),
-                            previous_move.to_string(),
-                            depth
-                        ),
-                        vec![format!(
-                            "{}-{}-{}",
-                            board.to_string().replace("/", "#"),
-                            board_move.to_string(),
-                            cmp::max(depth - 1, 0)
-                        )],
-                    );
-                }
-            };
-        } else {
-            // it won't have a previous move if it's the very first node in the tree.
-            let node_id = self.node_connections.get_mut(&format!("top"));
-            match node_id {
-                Some(node_id) => node_id.push(format!(
-                    "{}-{}-{}",
-                    board.to_string().replace("/", "#"),
-                    board_move.to_string(),
-                    cmp::max(depth - 1, 0)
-                )),
-                None => {self.node_connections.insert(
-                    format!("top"),
-                    vec![format!(
-                        "{}-{}-{}",
-                        board.to_string().replace("/", "#"),
-                        board_move.to_string(),
-                        cmp::max(depth - 1, 0)
-                    )],
-                );},
-            };
-        }
-    }
 }
