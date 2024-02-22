@@ -1,6 +1,7 @@
+use crate::bots::basic_bot::BasicBot;
 use chess::{Board, ChessMove};
 
-use crate::bots::basic_bot::BasicBot;
+use std::time::Instant;
 
 pub trait Search {
     fn search(&mut self, depth: u16) -> (i32, ChessMove);
@@ -12,24 +13,34 @@ impl Search for BasicBot {
         let board = self.board.clone();
         let alpha = -999999; // Negative infinity
         let beta = 999999; // Positive infinity
+        let start = Instant::now();
 
-        let (best_eval, best_move) = self.internal_search(&board, depth, alpha, beta, true);
-        (best_eval, best_move.unwrap())
+        let (best_eval, best_move) =
+            self.internal_search(&board, depth, depth, alpha, beta, true, None);
+        self.uci.set_ms_passed(start.elapsed().as_millis() as u64);
+
+        let best_move = match best_move {
+            Some(best_move) => best_move,
+            None => panic!("Something went wrong with searching the best move."),
+        };
+
+        (best_eval, best_move)
     }
 }
 
 pub trait Evaluation {
-    fn evaluation(&self, board: &Board) -> i32;
+    fn evaluation(&self, board: &Board, moves: &Vec<ChessMove>, is_maximizing_player: bool) -> i32;
 }
 
 impl Evaluation for BasicBot {
-    // internal function, doesn't interact with self
-    fn evaluation(&self, board: &Board) -> i32 {
-        // currently handles quiet moves like shit.
-        // if there's no capture moves, then it'll be the first move in the movelist
+    fn evaluation(&self, board: &Board, moves: &Vec<ChessMove>, is_maximizing_player: bool) -> i32 {
+        // all of these functions subtract from black and white and vice versa
+        // should we pass in the "maximizing_player" boolean instead of praying White will be the
+        // maximizing player?
         let material = self.evaluate_material_advantage(board);
         let position = self.evaluate_piece_sq_table(board);
+        let check = self.evaluate_mates(board, moves, is_maximizing_player);
 
-        material + position as i32
+        material + position as i32 + check
     }
 }

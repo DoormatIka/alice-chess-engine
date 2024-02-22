@@ -1,19 +1,23 @@
 use crate::piece_sq_tables::{create_pesto_piece_sqaure, ColoredTables};
 use crate::types::pieces_colored::PiecesColored;
+use crate::uci::uci::Uci;
 use crate::{bots::bot_traits::Evaluation, moves::move_gen::generate_moves};
 
-use chess::{Board, ChessMove, Color, ALL_SQUARES, Piece};
+use chess::{Board, ChessMove, Color, Piece, ALL_SQUARES};
 use std::cmp;
 
 pub struct BasicBot {
     pub board: Board,
-    pesto: ( ColoredTables, ColoredTables ),
+    pub uci: Uci,
+    pesto: (ColoredTables, ColoredTables),
 }
+
 impl BasicBot {
     pub fn new(board: &Board) -> Self {
         Self {
             board: board.clone(),
             pesto: create_pesto_piece_sqaure(),
+            uci: Uci::default(),
         }
     }
 
@@ -24,30 +28,26 @@ impl BasicBot {
         let material_white = self.calculate_material(white) as i32;
         let material_black = self.calculate_material(black) as i32;
 
-        let eval = material_white - material_black;
-        let perspective = if board.side_to_move() == Color::White {
-            1
+        let eval = if board.side_to_move() == Color::White {
+            material_white - material_black
         } else {
-            -1
+            material_black - material_white
         };
-
-        return eval * perspective;
+        return eval;
     }
 
     pub fn evaluate_piece_sq_table(&self, board: &Board) -> f32 {
         let (white_mg_score, white_eg_score, black_mg_score, black_eg_score) =
-            self.calculate_piece_sq_with_board(board); // doesn't work
-        let (mg_score, eg_score, perspective) = if board.side_to_move() == Color::White {
+            self.calculate_piece_sq_with_board(board);
+        let (mg_score, eg_score) = if board.side_to_move() == Color::White {
             (
                 white_mg_score - black_mg_score,
                 white_eg_score - black_eg_score,
-                1
             )
         } else {
             (
                 black_mg_score - white_mg_score,
                 black_eg_score - white_eg_score,
-                -1
             )
         };
 
@@ -67,13 +67,12 @@ impl BasicBot {
         let weighted_mg_score = mg_phase * mg_score as f32;
         let weighted_eg_score = eg_phase * eg_score as f32;
 
-        let score = (weighted_mg_score + weighted_eg_score);
+        let score = weighted_mg_score + weighted_eg_score;
 
         score
     }
 
     /**
-     *     
      * * Calculates the pieces in the board.
      *
      * (white_mg_score, white_eg_score, black_mg_score, black_eg_score) is the return type.
@@ -97,7 +96,7 @@ impl BasicBot {
                         Color::White => {
                             white_mg += mg_pesto.white[piece as usize][sq.to_int() as usize];
                             white_eg += eg_pesto.white[piece as usize][sq.to_int() as usize];
-                        },
+                        }
                         Color::Black => {
                             black_mg += mg_pesto.black[piece as usize][sq.to_int() as usize];
                             black_eg += eg_pesto.black[piece as usize][sq.to_int() as usize];
@@ -133,100 +132,104 @@ impl BasicBot {
         material
     }
 
+    pub fn evaluate_mates(&self, board: &Board, moves: &Vec<ChessMove>, is_maximizing_player: bool) -> i32 {
+        let perspective = if is_maximizing_player {
+            -1
+        } else {
+            1
+        };
+        let check = if moves.len() == 0 {
+            let checkers = board.checkers();
+            if checkers.popcnt() >= 1 {
+                // checkmate
+                999999 * perspective
+            } else {
+                // stalemate
+                555555 * perspective
+            }
+        } else {
+            0
+        };
+
+        check
+    }
+
     pub fn internal_search(
         &mut self,
         board: &Board,
+        max_depth: u16,
         depth: u16,
         mut alpha: i32,
         mut beta: i32,
         is_maximizing_player: bool,
+        previous_move: Option<ChessMove>,
     ) -> (i32, Option<ChessMove>) {
-        // println!("Depth: {}, Alpha: {}, Beta: {}, Is Maximizing Player: {}", depth, alpha, beta, is_maximizing_player);
+        let all_moves = generate_moves(&board);
 
         if depth == 0 {
-            let evaluation = self.evaluation(board);
-            // println!("Leaf node, evaluation: {}", evaluation);
+            let evaluation = self.evaluation(board, &all_moves, is_maximizing_player);
             return (evaluation, None);
         }
 
-        let (mut capture_moves, mut non_capture_moves) = generate_moves(&board);
-        let mut all_moves: Vec<ChessMove> = vec![];
-        all_moves.append(&mut capture_moves);
-        all_moves.append(&mut non_capture_moves);
-
-        // println!("Generated moves: {:?}", all_moves);
-
-        if all_moves.len() == 0 {
-            if board.checkers().popcnt() != 0 {
-                // println!("No moves and in check, Checkmate, returning -1000000");
-                return (-1000000, None);
-            }
-            // println!("No moves, Stalemate, returning 0");
-            return (0, None);
-        }
-
-        let mut best_move = Some(all_moves[0]); // Store the first move as the best move initially
-
+        let mut best_move = all_moves.get(0).map(|f| f.clone()); // Store the first move as the best move initially
         if is_maximizing_player {
             let mut best_val = -1000000;
-            // println!("Maximizing player, initial best value: {}", best_val);
 
             for board_move in all_moves.iter() {
                 let board = board.make_move_new(*board_move);
-                let (eval, _) =
-                    self.internal_search(&board, depth - 1, alpha, beta, !is_maximizing_player);
 
-                if eval > beta {
-                    // assuming the opponent would never let the player reach this position
-                    //      i.e: "failing high"
-                    return (beta, best_move);
-                }
+                let (eval, _) = self.internal_search(
+                    &board,
+                    max_depth,
+                    depth - 1,
+                    alpha,
+                    beta,
+                    !is_maximizing_player,
+                    Some(*board_move),
+                );
 
                 if eval > best_val {
                     best_val = eval;
                     best_move = Some(*board_move);
+                    self.uci.update_depth_data(depth, max_depth, best_move);
                 }
                 alpha = cmp::max(alpha, best_val);
 
-                // println!("Move: {:?}, Value: {}, Best Value: {}, Alpha: {}", board_move, value, best_val, alpha);
-
                 if beta <= alpha {
-                    // println!("Alpha >= Beta, pruning");
                     break;
                 }
             }
             (best_val, best_move)
         } else {
             let mut best_val = 1000000;
-            // println!("Minimizing player, initial best value: {}", best_val);
 
             for board_move in all_moves.iter() {
                 let board = board.make_move_new(*board_move);
-                let (eval, _) =
-                    self.internal_search(&board, depth - 1, alpha, beta, !is_maximizing_player);
 
-                if eval < alpha {
-                    // assuming the opponent would never let the player reach this position
-                    //      i.e: "failing high"
-                    //
-                    // same as the maximizing player but just in reverse.
-                    return (alpha, best_move);
-                }
+                let (eval, _) = self.internal_search(
+                    &board,
+                    max_depth,
+                    depth - 1,
+                    alpha,
+                    beta,
+                    !is_maximizing_player,
+                    Some(*board_move),
+                );
 
                 if eval < best_val {
                     best_val = eval;
                     best_move = Some(*board_move);
+                    self.uci.update_depth_data(depth, max_depth, best_move);
                 }
                 beta = cmp::min(beta, best_val);
 
-                // println!("Move: {:?}, Value: {}, Best Value: {}, Beta: {}", board_move, value, best_val, beta);
-
                 if beta <= alpha {
-                    // println!("Beta <= Alpha, pruning");
                     break;
                 }
             }
+
             (best_val, best_move)
         }
     }
+    
 }

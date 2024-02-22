@@ -1,4 +1,3 @@
-
 pub struct ColoredTables {
     pub white: Table,
     pub black: Table,
@@ -103,7 +102,7 @@ pub fn create_pesto_piece_sqaure() -> (ColoredTables, ColoredTables) {
         mg_queen_table,
         mg_king_table,
     ];
-    
+
     let mut white_mg_table: Table = [[0; 64]; 6];
     let mut white_eg_table: Table = [[0; 64]; 6];
     let mut black_mg_table: Table = [[0; 64]; 6];
@@ -121,8 +120,14 @@ pub fn create_pesto_piece_sqaure() -> (ColoredTables, ColoredTables) {
         }
     }
 
-    ( 
-        ColoredTables { white: white_mg_table, black: black_mg_table },
-        ColoredTables { white: white_eg_table, black: black_eg_table }
+    (
+        ColoredTables {
+            white: white_mg_table,
+            black: black_mg_table,
+        },
+        ColoredTables {
+            white: white_eg_table,
+            black: black_eg_table,
+        },
     )
 }
