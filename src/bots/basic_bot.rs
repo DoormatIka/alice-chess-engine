@@ -182,10 +182,18 @@ impl BasicBot {
 
         let mut best_move = all_moves.get(0).map(|f| f.clone()); // Store the first move as the best move initially
         if is_maximizing_player {
+            let mut best_val = -1000000;
+
             for board_move in all_moves.iter() {
+
+                let previous_board = board.clone();
                 let board = board.make_move_new(*board_move);
 
-                let (eval, _) = self.internal_search(
+                // Note: this has an extremely hard performance impact. this is only enabled for
+                // debugging purposes.
+                self.push_node(&previous_board, previous_move, &board, board_move, depth);
+
+                let (eval, best) = self.internal_search(
                     &board,
                     max_depth,
                     depth - 1,
@@ -194,21 +202,47 @@ impl BasicBot {
                     !is_maximizing_player,
                     Some(*board_move),
                 );
-                if eval > alpha {
-                    alpha = eval;
+                
+                let node_info = NodeInfo { 
+                    evaluation: eval, 
+                    best_move: best.map(|c| c.to_string()), 
+                    alpha, 
+                    beta, 
+                    is_maximizing_player,
+                };
+                if depth == max_depth {
+                    self.node_information.insert(format!("top"), node_info);
+                } else {
+                    self.node_information.insert(format!(
+                        "{}-{}-{}",
+                        board.to_string().replace("/", "#"),
+                        board_move.to_string(),
+                        cmp::max(depth - 1, 0)
+                    ), node_info);
+                }
+
+                if eval > best_val {
+                    best_val = eval;
                     best_move = Some(*board_move);
                     self.uci.update_depth_data(depth, max_depth, best_move);
                 }
+                alpha = cmp::max(alpha, best_val);
+
                 if beta <= alpha {
                     break;
                 }
             }
-            (alpha, best_move)
+            (best_val, best_move)
         } else {
+            let mut best_val = 1000000;
+
             for board_move in all_moves.iter() {
+                let previous_board = board.clone();
                 let board = board.make_move_new(*board_move);
 
-                let (eval, _) = self.internal_search(
+                self.push_node(&previous_board, previous_move, &board, board_move, depth);
+
+                let (eval, best) = self.internal_search(
                     &board,
                     max_depth,
                     depth - 1,
@@ -218,18 +252,37 @@ impl BasicBot {
                     Some(*board_move),
                 );
 
-                if eval < beta {
-                    beta = eval;
+                let node_info = NodeInfo { 
+                    evaluation: eval, 
+                    best_move: best.map(|c| c.to_string()), 
+                    alpha, 
+                    beta, 
+                    is_maximizing_player,
+                };
+                if depth == max_depth {
+                    self.node_information.insert(format!("top"), node_info);
+                } else {
+                    self.node_information.insert(format!(
+                        "{}-{}-{}",
+                        board.to_string().replace("/", "#"),
+                        board_move.to_string(),
+                        cmp::max(depth - 1, 0)
+                    ), node_info);
+                }
+
+                if eval < best_val {
+                    best_val = eval;
                     best_move = Some(*board_move);
                     self.uci.update_depth_data(depth, max_depth, best_move);
                 }
+                beta = cmp::min(beta, best_val);
 
                 if alpha <= beta {
                     break;
                 }
             }
 
-            (beta, best_move)
+            (best_val, best_move)
         }
     }
     
