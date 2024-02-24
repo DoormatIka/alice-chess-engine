@@ -8,8 +8,8 @@ This is to be used for an upcoming game made by our group "twoleaflotus".
   - BasicBot (Cirno)
     - Alpha-beta Pruning
     - Material Counting
-    - Fail-High
-    - Piece-square tables
+    - Killer Heuristic
+    - Piece-square tables for positioning
     - UCI (`go depth x` only)
 
 ### Todo
