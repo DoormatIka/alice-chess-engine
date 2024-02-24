@@ -11,6 +11,8 @@ pub struct BasicBot {
     pub uci: Uci,
     pesto: (ColoredTables, ColoredTables),
     killer_moves: Vec<Vec<Option<ChessMove>>>,
+    history_table: [[i32; 64]; 64], 
+
 }
 
 impl BasicBot {
@@ -19,7 +21,8 @@ impl BasicBot {
             board: board.clone(),
             pesto: create_pesto_piece_sqaure(),
             uci: Uci::default(),
-            killer_moves: vec![vec![None; 4]; 10], // Fix this later, Pretends the depth is 10.
+            killer_moves: vec![vec![None; 4]; 15], // Fix this later, Make dynamic setting of this based on depth
+            history_table: [[0; 64]; 64],
 
         }
     }
@@ -66,8 +69,6 @@ impl BasicBot {
 
         let mg_phase = game_phase;
         let eg_phase = 1.0 - game_phase;
-
-        dbg!(mg_phase, eg_phase, game_phase);
 
         let weighted_mg_score = mg_phase * mg_score as f32;
         let weighted_eg_score = eg_phase * eg_score as f32;
@@ -170,6 +171,7 @@ impl BasicBot {
         is_maximizing_player: bool,
         _previous_move: Option<ChessMove>,
     ) -> (i32, Option<ChessMove>) {
+        let max_depth_history = 10;
         let all_moves = generate_moves(&board);
         let mut killer_moves: Vec<ChessMove> = Vec::new();
         let mut regular_moves: Vec<ChessMove> = Vec::new();
@@ -182,10 +184,19 @@ impl BasicBot {
             }
         }
         
-        regular_moves.sort_by_key(|chess_move: &ChessMove| -self.mvv_lva_score(chess_move, &board));
+        regular_moves.sort_by_key(|chess_move: &ChessMove| {
+            let source = chess_move.get_source().to_int() as usize;
+            let dest = chess_move.get_dest().to_int() as usize;
+            let history_score = if depth <= max_depth_history {
+                -self.history_table[source][dest]
+            } else {
+                0
+            };
+            let mvv_lva_score = -self.mvv_lva_score(chess_move, &board).unwrap_or(0); 
+            (history_score, mvv_lva_score)
+        });
         
         let sorted_moves = killer_moves.into_iter().chain(regular_moves.into_iter()).collect::<Vec<ChessMove>>();
-
         if depth == 0 {
             let evaluation = self.evaluation(board, &sorted_moves, is_maximizing_player);
             return (evaluation, None);
@@ -218,6 +229,11 @@ impl BasicBot {
                 if beta <= alpha {
                     self.killer_moves[depth as usize].rotate_right(1);
                     self.killer_moves[depth as usize][0] = Some(*board_move);
+
+                    let source = board_move.get_source().to_int() as usize;
+                    let dest = board_move.get_dest().to_int() as usize;
+                    self.history_table[source][dest] += 1;
+
                     break;
                 }
             }
@@ -248,6 +264,11 @@ impl BasicBot {
                 if beta <= alpha {
                     self.killer_moves[depth as usize].rotate_right(1);
                     self.killer_moves[depth as usize][0] = Some(*board_move);
+
+                    let source = board_move.get_source().to_int() as usize;
+                    let dest = board_move.get_dest().to_int() as usize;
+                    self.history_table[source][dest] += 1;
+
                     break;
                 }
             }
@@ -255,11 +276,18 @@ impl BasicBot {
             (best_val, best_move)
         }
     }
-    fn mvv_lva_score(&self, chess_move: &ChessMove, board: &Board) -> i32 {
-        // stop using unwraps
-        let victim_value = self.piece_value(board.piece_on(chess_move.get_dest()).unwrap());
-        let aggressor_value = self.piece_value(board.piece_on(chess_move.get_source()).unwrap());
-        victim_value - aggressor_value
+    fn mvv_lva_score(&self, chess_move: &ChessMove, board: &Board) -> Option<i32> {
+        let victim_piece = board.piece_on(chess_move.get_dest());
+        let aggressor_piece = board.piece_on(chess_move.get_source());
+    
+        match (victim_piece, aggressor_piece) {
+            (Some(victim), Some(aggressor)) => {
+                let victim_value = self.piece_value(victim);
+                let aggressor_value = self.piece_value(aggressor);
+                Some(victim_value - aggressor_value)
+            },
+            _ => None, 
+        }
     }
     
     fn piece_value(&self, piece: Piece) -> i32 {
