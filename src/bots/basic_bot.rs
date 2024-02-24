@@ -2,9 +2,11 @@ use crate::piece_sq_tables::{create_pesto_piece_sqaure, ColoredTables};
 use crate::types::pieces_colored::PiecesColored;
 use crate::uci::uci::Uci;
 use crate::{bots::bot_traits::Evaluation, moves::move_gen::generate_moves};
+use crate::bots::bot_traits::ChessScoring;
 
 use chess::{Board, ChessMove, Color, Piece, ALL_SQUARES};
 use std::cmp;
+
 
 pub struct BasicBot {
     pub board: Board,
@@ -276,28 +278,6 @@ impl BasicBot {
             (best_val, best_move)
         }
     }
-    fn mvv_lva_score(&self, chess_move: &ChessMove, board: &Board) -> Option<i32> {
-        let victim_piece = board.piece_on(chess_move.get_dest());
-        let aggressor_piece = board.piece_on(chess_move.get_source());
-    
-        match (victim_piece, aggressor_piece) {
-            (Some(victim), Some(aggressor)) => {
-                let victim_value = self.piece_value(victim);
-                let aggressor_value = self.piece_value(aggressor);
-                Some(victim_value - aggressor_value)
-            },
-            _ => None, 
-        }
-    }
-    
-    fn piece_value(&self, piece: Piece) -> i32 {
-        match piece {
-            Piece::Pawn => 1,
-            Piece::Knight | Piece::Bishop => 3,
-            Piece::Rook => 5,
-            Piece::Queen => 9,
-            Piece::King => std::i32::MAX,
-        }
-    }
+
     
 }
