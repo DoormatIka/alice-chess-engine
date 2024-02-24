@@ -59,24 +59,7 @@ impl BasicBot {
             )
         };
 
-        let white_pieces = PiecesColored::get_colored_pieces(board, Color::White); // works
-        let black_pieces = PiecesColored::get_colored_pieces(board, Color::Black); // works
-        let white_material = self.calculate_material(white_pieces); // works
-        let black_material = self.calculate_material(black_pieces); // works
-
-        let total_material = white_material + black_material;
-
-        let max_material = 7800.0; // Maximum possible material at the start of the game
-        let game_phase = total_material as f32 / max_material;
-
-        let mg_phase = game_phase;
-        let eg_phase = 1.0 - game_phase;
-
-        let weighted_mg_score = mg_phase * mg_score as f32;
-        let weighted_eg_score = eg_phase * eg_score as f32;
-
-
-        let score = weighted_mg_score + weighted_eg_score;
+        let score = self.calculate_score(board, mg_score, eg_score);
 
         score
     }
@@ -277,6 +260,25 @@ impl BasicBot {
 
             (best_val, best_move)
         }
+    }
+    fn calculate_score(&self, board: &Board, mg_score: i32, eg_score: i32) -> f32 {
+        let white_pieces = PiecesColored::get_colored_pieces(board, Color::White);
+        let black_pieces = PiecesColored::get_colored_pieces(board, Color::Black);
+        let white_material = self.calculate_material(white_pieces);
+        let black_material = self.calculate_material(black_pieces);
+    
+        let total_material = white_material + black_material;
+    
+        const MAX_MATERIAL: f32 = 7800.0;
+        let game_phase = total_material as f32 / MAX_MATERIAL;
+    
+        let mg_phase = game_phase;
+        let eg_phase = 1.0 - game_phase;
+    
+        let weighted_mg_score = mg_phase * mg_score as f32;
+        let weighted_eg_score = eg_phase * eg_score as f32;
+    
+        weighted_mg_score + weighted_eg_score
     }
 
     
