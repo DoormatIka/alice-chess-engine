@@ -61,11 +61,14 @@ impl BasicBot {
         let max_material = 7800.0; // Maximum possible material at the start of the game
         let game_phase = total_material as f32 / max_material;
 
-        let mg_phase = 1.0 - game_phase;
-        let eg_phase = game_phase;
+        let mg_phase = game_phase;
+        let eg_phase = 1.0 - game_phase;
+
+        dbg!(mg_phase, eg_phase, game_phase);
 
         let weighted_mg_score = mg_phase * mg_score as f32;
         let weighted_eg_score = eg_phase * eg_score as f32;
+
 
         let score = weighted_mg_score + weighted_eg_score;
 
