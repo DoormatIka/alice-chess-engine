@@ -7,7 +7,6 @@ use crate::bots::bot_traits::ChessScoring;
 use chess::{Board, ChessMove, Color, Piece, ALL_SQUARES};
 use std::cmp;
 
-
 pub struct BasicBot {
     pub board: Board,
     pub uci: Uci,
@@ -212,13 +211,7 @@ impl BasicBot {
                 alpha = cmp::max(alpha, best_val);
 
                 if beta <= alpha {
-                    self.killer_moves[depth as usize].rotate_right(1);
-                    self.killer_moves[depth as usize][0] = Some(*board_move);
-
-                    let source = board_move.get_source().to_int() as usize;
-                    let dest = board_move.get_dest().to_int() as usize;
-                    self.history_table[source][dest] += 1;
-
+                    self.update_killer_move(depth, *board_move);
                     break;
                 }
             }
@@ -247,13 +240,7 @@ impl BasicBot {
                 beta = cmp::min(beta, best_val);
 
                 if beta <= alpha {
-                    self.killer_moves[depth as usize].rotate_right(1);
-                    self.killer_moves[depth as usize][0] = Some(*board_move);
-
-                    let source = board_move.get_source().to_int() as usize;
-                    let dest = board_move.get_dest().to_int() as usize;
-                    self.history_table[source][dest] += 1;
-
+                    self.update_killer_move(depth, *board_move);
                     break;
                 }
             }
@@ -269,8 +256,9 @@ impl BasicBot {
     
         let total_material = white_material + black_material;
     
-        const MAX_MATERIAL: f32 = 7800.0;
-        let game_phase = total_material as f32 / MAX_MATERIAL;
+        let max_material = 7800.0;
+
+        let game_phase = total_material as f32 / max_material;
     
         let mg_phase = game_phase;
         let eg_phase = 1.0 - game_phase;
@@ -280,6 +268,16 @@ impl BasicBot {
     
         weighted_mg_score + weighted_eg_score
     }
+
+    
+fn update_killer_move(&mut self, depth: u16, board_move: ChessMove) {
+    self.killer_moves[depth as usize].rotate_right(1);
+    self.killer_moves[depth as usize][0] = Some(board_move);
+
+    let source = board_move.get_source().to_int() as usize;
+    let dest = board_move.get_dest().to_int() as usize;
+    self.history_table[source][dest] += 1;
+}
 
     
 }
