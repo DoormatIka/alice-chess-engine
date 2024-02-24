@@ -10,6 +10,7 @@ pub struct BasicBot {
     pub board: Board,
     pub uci: Uci,
     pesto: (ColoredTables, ColoredTables),
+    killer_moves: Vec<Vec<Option<ChessMove>>>,
 }
 
 impl BasicBot {
@@ -18,6 +19,8 @@ impl BasicBot {
             board: board.clone(),
             pesto: create_pesto_piece_sqaure(),
             uci: Uci::default(),
+            killer_moves: vec![vec![None; 2]; 10], // Fix this later, Pretends the depth is 10.
+
         }
     }
 
@@ -168,17 +171,28 @@ impl BasicBot {
         previous_move: Option<ChessMove>,
     ) -> (i32, Option<ChessMove>) {
         let all_moves = generate_moves(&board);
+        let mut sorted_moves = Vec::new();
+
+        for board_move in all_moves {
+            if Some(board_move) == self.killer_moves[depth as usize][0]
+                || Some(board_move) == self.killer_moves[depth as usize][1]
+            {
+                sorted_moves.insert(0, board_move);
+            } else {
+                sorted_moves.push(board_move);
+            }
+        }
 
         if depth == 0 {
-            let evaluation = self.evaluation(board, &all_moves, is_maximizing_player);
+            let evaluation = self.evaluation(board, &sorted_moves, is_maximizing_player);
             return (evaluation, None);
         }
 
-        let mut best_move = all_moves.get(0).map(|f| f.clone()); // Store the first move as the best move initially
+        let mut best_move = sorted_moves.get(0).map(|f| f.clone()); // Store the first move as the best move initially
         if is_maximizing_player {
             let mut best_val = -1000000;
 
-            for board_move in all_moves.iter() {
+            for board_move in sorted_moves.iter() {
                 let board = board.make_move_new(*board_move);
 
                 let (eval, _) = self.internal_search(
@@ -199,6 +213,8 @@ impl BasicBot {
                 alpha = cmp::max(alpha, best_val);
 
                 if beta <= alpha {
+                    self.killer_moves[depth as usize][1] = self.killer_moves[depth as usize][0];
+                    self.killer_moves[depth as usize][0] = Some(*board_move);
                     break;
                 }
             }
@@ -206,7 +222,7 @@ impl BasicBot {
         } else {
             let mut best_val = 1000000;
 
-            for board_move in all_moves.iter() {
+            for board_move in sorted_moves.iter() {
                 let board = board.make_move_new(*board_move);
 
                 let (eval, _) = self.internal_search(
@@ -227,6 +243,8 @@ impl BasicBot {
                 beta = cmp::min(beta, best_val);
 
                 if beta <= alpha {
+                    self.killer_moves[depth as usize][1] = self.killer_moves[depth as usize][0];
+                    self.killer_moves[depth as usize][0] = Some(*board_move);
                     break;
                 }
             }
