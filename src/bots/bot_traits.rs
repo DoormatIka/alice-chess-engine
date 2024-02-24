@@ -54,17 +54,17 @@ impl ChessScoring for BasicBot {
     fn mvv_lva_score(&self, chess_move: &ChessMove, board: &Board) -> Option<i32> {
         let victim_piece = board.piece_on(chess_move.get_dest());
         let aggressor_piece = board.piece_on(chess_move.get_source());
-    
+
         match (victim_piece, aggressor_piece) {
             (Some(victim), Some(aggressor)) => {
                 let victim_value = self.piece_value(victim);
                 let aggressor_value = self.piece_value(aggressor);
                 Some(victim_value - aggressor_value)
-            },
-            _ => None, 
+            }
+            _ => None,
         }
     }
-    
+
     fn piece_value(&self, piece: Piece) -> i32 {
         match piece {
             Piece::Pawn => 1,
