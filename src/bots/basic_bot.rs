@@ -61,8 +61,8 @@ impl BasicBot {
         let max_material = 7800.0; // Maximum possible material at the start of the game
         let game_phase = total_material as f32 / max_material;
 
-        let mg_phase = game_phase;
-        let eg_phase = game_phase - 1.0;
+        let mg_phase = 1.0 - game_phase;
+        let eg_phase = game_phase;
 
         let weighted_mg_score = mg_phase * mg_score as f32;
         let weighted_eg_score = eg_phase * eg_score as f32;
@@ -124,7 +124,7 @@ impl BasicBot {
         let mut material = 0;
 
         material += pieces.pawns.popcnt() * 100;
-        material += pieces.knights.popcnt() * 400;
+        material += pieces.knights.popcnt() * 300;
         material += pieces.bishops.popcnt() * 300;
         material += pieces.rooks.popcnt() * 500;
         material += pieces.queens.popcnt() * 900;
