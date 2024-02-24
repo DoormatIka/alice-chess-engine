@@ -168,18 +168,23 @@ impl BasicBot {
         mut alpha: i32,
         mut beta: i32,
         is_maximizing_player: bool,
-        previous_move: Option<ChessMove>,
+        _previous_move: Option<ChessMove>,
     ) -> (i32, Option<ChessMove>) {
         let all_moves = generate_moves(&board);
-        let mut sorted_moves = Vec::new();
-
+        let mut killer_moves: Vec<ChessMove> = Vec::new();
+        let mut regular_moves: Vec<ChessMove> = Vec::new();
+        
         for board_move in all_moves {
             if self.killer_moves[depth as usize].contains(&Some(board_move)) {
-                sorted_moves.insert(0, board_move);
+                killer_moves.push(board_move);
             } else {
-                sorted_moves.push(board_move);
+                regular_moves.push(board_move);
             }
         }
+        
+        regular_moves.sort_by_key(|chess_move: &ChessMove| -self.mvv_lva_score(chess_move, &board));
+        
+        let sorted_moves = killer_moves.into_iter().chain(regular_moves.into_iter()).collect::<Vec<ChessMove>>();
 
         if depth == 0 {
             let evaluation = self.evaluation(board, &sorted_moves, is_maximizing_player);
@@ -248,6 +253,22 @@ impl BasicBot {
             }
 
             (best_val, best_move)
+        }
+    }
+    fn mvv_lva_score(&self, chess_move: &ChessMove, board: &Board) -> i32 {
+        // stop using unwraps
+        let victim_value = self.piece_value(board.piece_on(chess_move.get_dest()).unwrap());
+        let aggressor_value = self.piece_value(board.piece_on(chess_move.get_source()).unwrap());
+        victim_value - aggressor_value
+    }
+    
+    fn piece_value(&self, piece: Piece) -> i32 {
+        match piece {
+            Piece::Pawn => 1,
+            Piece::Knight | Piece::Bishop => 3,
+            Piece::Rook => 5,
+            Piece::Queen => 9,
+            Piece::King => std::i32::MAX,
         }
     }
     
