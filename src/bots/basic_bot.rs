@@ -62,10 +62,13 @@ impl BasicBot {
         let game_phase = total_material as f32 / max_material;
 
         let mg_phase = game_phase;
-        let eg_phase = game_phase - 1.0;
+        let eg_phase = 1.0 - game_phase;
+
+        dbg!(mg_phase, eg_phase, game_phase);
 
         let weighted_mg_score = mg_phase * mg_score as f32;
         let weighted_eg_score = eg_phase * eg_score as f32;
+
 
         let score = weighted_mg_score + weighted_eg_score;
 
@@ -124,7 +127,7 @@ impl BasicBot {
         let mut material = 0;
 
         material += pieces.pawns.popcnt() * 100;
-        material += pieces.knights.popcnt() * 400;
+        material += pieces.knights.popcnt() * 300;
         material += pieces.bishops.popcnt() * 300;
         material += pieces.rooks.popcnt() * 500;
         material += pieces.queens.popcnt() * 900;
