@@ -19,7 +19,7 @@ impl BasicBot {
             board: board.clone(),
             pesto: create_pesto_piece_sqaure(),
             uci: Uci::default(),
-            killer_moves: vec![vec![None; 2]; 10], // Fix this later, Pretends the depth is 10.
+            killer_moves: vec![vec![None; 4]; 10], // Fix this later, Pretends the depth is 10.
 
         }
     }
@@ -174,9 +174,7 @@ impl BasicBot {
         let mut sorted_moves = Vec::new();
 
         for board_move in all_moves {
-            if Some(board_move) == self.killer_moves[depth as usize][0]
-                || Some(board_move) == self.killer_moves[depth as usize][1]
-            {
+            if self.killer_moves[depth as usize].contains(&Some(board_move)) {
                 sorted_moves.insert(0, board_move);
             } else {
                 sorted_moves.push(board_move);
@@ -213,7 +211,7 @@ impl BasicBot {
                 alpha = cmp::max(alpha, best_val);
 
                 if beta <= alpha {
-                    self.killer_moves[depth as usize][1] = self.killer_moves[depth as usize][0];
+                    self.killer_moves[depth as usize].rotate_right(1);
                     self.killer_moves[depth as usize][0] = Some(*board_move);
                     break;
                 }
@@ -243,7 +241,7 @@ impl BasicBot {
                 beta = cmp::min(beta, best_val);
 
                 if beta <= alpha {
-                    self.killer_moves[depth as usize][1] = self.killer_moves[depth as usize][0];
+                    self.killer_moves[depth as usize].rotate_right(1);
                     self.killer_moves[depth as usize][0] = Some(*board_move);
                     break;
                 }
