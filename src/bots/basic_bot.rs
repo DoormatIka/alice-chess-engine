@@ -20,14 +20,14 @@ pub struct BasicBot {
 }
 
 impl BasicBot {
-    pub fn new(board: &Board) -> Self {
+    pub fn new(board: &Board, tt_byte_size: usize) -> Self {
         Self {
             board: board.clone(),
             pesto: create_pesto_piece_sqaure(),
             uci: Uci::default(),
             killer_moves: vec![vec![None; 4]; 15], // Fix this later, Make dynamic setting of this based on depth
             history_table: [[0; 64]; 64],
-            tt_table: ZobristHashMap::new(),
+            tt_table: ZobristHashMap::new(tt_byte_size),
         }
     }
 
@@ -183,24 +183,30 @@ impl BasicBot {
             let mvv_lva_score = -self.mvv_lva_score(chess_move, &board).unwrap_or(0);
             (history_score, mvv_lva_score)
         });
-
         let sorted_moves = killer_moves
             .into_iter()
             .chain(regular_moves.into_iter())
             .collect::<Vec<ChessMove>>();
+
+
         if depth == 0 {
             let evaluation = self.evaluation(board, &sorted_moves, is_maximizing_player);
-            self.tt_table.insert(board, NodeInfo { eval: evaluation, best_move: ChessMove::default() });
-            self.tt_table.print();
             return (evaluation, None);
         }
 
         let mut best_move = sorted_moves.get(0).map(|f| f.clone()); // Store the first move as the best move initially
+
         if is_maximizing_player {
             let mut best_val = -1000000;
 
             for board_move in sorted_moves.iter() {
                 let board = board.make_move_new(*board_move);
+                let node_info = if self.tt_table.contains(&board) {
+                    self.tt_table.get(&board).map(|v| v.clone())
+                } else {
+                    None
+                };
+                // okay, how do i use this without cutting a branch..
 
                 let (eval, _) = self.internal_search(
                     &board,
@@ -211,6 +217,8 @@ impl BasicBot {
                     !is_maximizing_player,
                     Some(*board_move),
                 );
+
+                self.tt_table.insert(&board, NodeInfo { eval, best_move });
 
                 if eval > best_val {
                     best_val = eval;

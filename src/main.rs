@@ -90,7 +90,7 @@ fn output_thread(out: UciMessage, out_board: &mut Board, toggle_ready_ok: &Arc<R
             };
             if let Some(search_control) = search_control {
                 if let Some(depth) = search_control.depth {
-                    let mut bot = BasicBot::new(&out_board);
+                    let mut bot = BasicBot::new(&out_board, 500 * 1000);
                     let (eval, chess_move) = bot.search(depth as u16);
                     let best_uci_move = conversion::chess_move_to_uci_move(&chess_move);
 

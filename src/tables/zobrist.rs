@@ -4,13 +4,10 @@ use std::collections::VecDeque;
 use chess::{Piece, Board, Square, Color, ChessMove};
 use rand::Rng;
 
-// Rough estimate of 40 bytes per capacity usage, so 500000 * 40 = 20MB
-const DEFAULT_CAPACITY: usize = 500000; 
-
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct NodeInfo {
     pub eval: i32,
-    pub best_move: ChessMove,
+    pub best_move: Option<ChessMove>,
 }
 
 pub struct ZobristHashMap<V> {
@@ -20,19 +17,21 @@ pub struct ZobristHashMap<V> {
     capacity: usize,
 }
 
-impl<V> Default for ZobristHashMap<V> {
-    fn default() -> Self {
-        Self { map: Default::default(), zobrist_table: init_zobrist(), keys: VecDeque::with_capacity(DEFAULT_CAPACITY), capacity: DEFAULT_CAPACITY }    
-    }
+fn capacity_to_bytes<K, V>() -> usize {
+    std::mem::size_of::<K>() + std::mem::size_of::<V>()
+}
+fn bytes_to_capacity<K, V>(total_bytes: usize) -> usize {
+    total_bytes / (std::mem::size_of::<K>() + std::mem::size_of::<V>())
 }
 
 impl<V> ZobristHashMap<V> where V: Debug {
-    pub fn new() -> Self {
+    pub fn new(byte_size: usize) -> Self {
+        let capacity = bytes_to_capacity::<u64, V>(byte_size);
         ZobristHashMap { 
             map: HashMap::with_hasher(BuildNoHashHasher::default()),
             zobrist_table: init_zobrist(),
-            keys: VecDeque::with_capacity(DEFAULT_CAPACITY),
-            capacity: DEFAULT_CAPACITY,
+            keys: VecDeque::with_capacity(capacity),
+            capacity,
         }
     }
     pub fn insert(&mut self, key: &Board, value: V) -> Option<V> {
