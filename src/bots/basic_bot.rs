@@ -31,6 +31,10 @@ impl BasicBot {
         }
     }
 
+    pub fn change_board(&mut self, board: &Board) {
+        self.board = board.clone();
+    }
+
     pub fn evaluate_material_advantage(&self, board: &Board) -> i32 {
         let white = PiecesColored::get_colored_pieces(&board, Color::White);
         let black = PiecesColored::get_colored_pieces(&board, Color::Black);
@@ -201,28 +205,27 @@ impl BasicBot {
 
             for board_move in sorted_moves.iter() {
                 let board = board.make_move_new(*board_move);
+
                 let node_info = if self.tt_table.contains(&board) {
-                    self.tt_table.get(&board).map(|v| v.clone())
+                    self.tt_table.get(&board).map(|v| v.clone()).unwrap()
                 } else {
-                    None
+                    let (eval, _) = self.internal_search(
+                        &board,
+                        max_depth,
+                        depth - 1,
+                        alpha,
+                        beta,
+                        !is_maximizing_player,
+                        Some(*board_move),
+                    );
+                    NodeInfo { eval, best_move }
                 };
-                // okay, how do i use this without cutting a branch..
 
-                let (eval, _) = self.internal_search(
-                    &board,
-                    max_depth,
-                    depth - 1,
-                    alpha,
-                    beta,
-                    !is_maximizing_player,
-                    Some(*board_move),
-                );
-
-                self.tt_table.insert(&board, NodeInfo { eval, best_move });
-
-                if eval > best_val {
-                    best_val = eval;
+                if node_info.eval > best_val {
+                    best_val = node_info.eval;
                     best_move = Some(*board_move);
+
+                    self.tt_table.insert(&board, NodeInfo { eval: node_info.eval, best_move });
                     self.uci.update_depth_data(depth, max_depth, best_move);
                 }
                 alpha = cmp::max(alpha, best_val);
@@ -239,19 +242,26 @@ impl BasicBot {
             for board_move in sorted_moves.iter() {
                 let board = board.make_move_new(*board_move);
 
-                let (eval, _) = self.internal_search(
-                    &board,
-                    max_depth,
-                    depth - 1,
-                    alpha,
-                    beta,
-                    !is_maximizing_player,
-                    Some(*board_move),
-                );
+                let node_info = if self.tt_table.contains(&board) {
+                    self.tt_table.get(&board).map(|v| v.clone()).unwrap()
+                } else {
+                    let (eval, _) = self.internal_search(
+                        &board,
+                        max_depth,
+                        depth - 1,
+                        alpha,
+                        beta,
+                        !is_maximizing_player,
+                        Some(*board_move),
+                    );
+                    NodeInfo { eval, best_move }
+                };
 
-                if eval < best_val {
-                    best_val = eval;
+                if node_info.eval < best_val {
+                    best_val = node_info.eval;
                     best_move = Some(*board_move);
+
+                    self.tt_table.insert(&board, NodeInfo { eval: node_info.eval, best_move });
                     self.uci.update_depth_data(depth, max_depth, best_move);
                 }
                 beta = cmp::min(beta, best_val);

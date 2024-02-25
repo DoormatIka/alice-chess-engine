@@ -79,15 +79,18 @@ pub fn init_zobrist() -> ([[u64; 6]; 64], [[u64; 6]; 64]) {
 }
 
 pub fn hash(board: &Board, white_zobrist_table: [[u64; 6]; 64], black_zobrist_table: [[u64; 6]; 64]) -> u64 {
-    let mut h = 0;
+    let mut final_hash = 0;
     for i in 0..64 {
         if let Some(piece) = board.piece_on(unsafe { Square::new(i) }) {
-            match board.side_to_move() {
-                Color::White => h = h ^ white_zobrist_table[i as usize][piece.to_index()],
-                Color::Black => h = h ^ black_zobrist_table[i as usize][piece.to_index()],
-            };
+            if let Some(color) = board.color_on(unsafe { Square::new(i) }) {
+                match color {
+                    Color::White => final_hash = final_hash ^ white_zobrist_table[i as usize][piece.to_index()],
+                    Color::Black => final_hash = final_hash ^ black_zobrist_table[i as usize][piece.to_index()],
+                };
+            }
         }
     }
     
-    h
+    final_hash
 }
+
