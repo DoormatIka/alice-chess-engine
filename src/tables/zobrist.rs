@@ -1,9 +1,10 @@
 use std::{collections::HashMap, fmt::Debug};
 use nohash_hasher::BuildNoHashHasher;
-
+use std::collections::VecDeque;
 use chess::{Piece, Board, Square, Color, ChessMove};
 use rand::Rng;
 
+const DEFAULT_CAPACITY: usize = 1000;
 #[derive(Debug)]
 pub struct NodeInfo {
     pub eval: i32,
@@ -13,11 +14,13 @@ pub struct NodeInfo {
 pub struct ZobristHashMap<V> {
     map: HashMap<u64, V, BuildNoHashHasher<u64>>,
     zobrist_table: ([[u64; 6]; 64], [[u64; 6]; 64]),
+    keys: VecDeque<u64>,
+    capacity: usize,
 }
 
 impl<V> Default for ZobristHashMap<V> {
     fn default() -> Self {
-        Self { map: Default::default(), zobrist_table: init_zobrist() }
+        Self { map: Default::default(), zobrist_table: init_zobrist(), keys: VecDeque::with_capacity(DEFAULT_CAPACITY), capacity: DEFAULT_CAPACITY }    
     }
 }
 
@@ -26,11 +29,16 @@ impl<V> ZobristHashMap<V> where V: Debug {
         ZobristHashMap { 
             map: HashMap::with_hasher(BuildNoHashHasher::default()),
             zobrist_table: init_zobrist(),
+            keys: VecDeque::with_capacity(DEFAULT_CAPACITY),
+            capacity: DEFAULT_CAPACITY,
         }
     }
     pub fn insert(&mut self, key: &Board, value: V) -> Option<V> {
         let hashd = hash(key, self.zobrist_table.0, self.zobrist_table.1);
-        self.map.insert(hashd, value)
+        self.keys.push_back(hashd);
+        let result = self.map.insert(hashd, value);
+        self.remove_oldest_if_full();
+        result
     }
     pub fn contains(&self, key: &Board) -> bool {
         let hashd = hash(key, self.zobrist_table.0, self.zobrist_table.1);
@@ -45,6 +53,13 @@ impl<V> ZobristHashMap<V> where V: Debug {
     }
     pub fn print(&self) {
         println!("{:#?}", self.map);
+    }
+    pub fn remove_oldest_if_full(&mut self) {
+        if self.keys.len() > self.capacity {
+            if let Some(key) = self.keys.pop_front() {
+                self.map.remove(&key);
+            }
+        }
     }
 }
 
