@@ -6,8 +6,10 @@ Two programmers' second attempt at writing a chess engine.
   - BasicBot (Cirno)
     - Alpha-beta Pruning
     - Material Counting
-    - Fail-High
     - Piece-square tables
+    - History Heuristic
+    - MVV-LVA
+    - Killer Heuristic
     - UCI (`go depth x` only)
 
 ### Todo

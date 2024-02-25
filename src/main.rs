@@ -20,7 +20,7 @@ use crate::uci::conversion;
 pub mod bots;
 pub mod fen;
 pub mod moves;
-pub mod piece_sq_tables;
+pub mod tables;
 pub mod types;
 pub mod uci;
 

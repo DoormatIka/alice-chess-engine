@@ -1,3 +1,5 @@
+use chess::Piece;
+
 pub struct ColoredTables {
     pub white: Table,
     pub black: Table,
@@ -108,7 +110,7 @@ pub fn create_pesto_piece_sqaure() -> (ColoredTables, ColoredTables) {
     let mut black_mg_table: Table = [[0; 64]; 6];
     let mut black_eg_table: Table = [[0; 64]; 6];
 
-    for piece in 0..6 {
+    for piece in Piece::Pawn.to_index()..Piece::King.to_index() {
         for sq in 0..64 {
             let rev_sq = 63 - sq;
 
