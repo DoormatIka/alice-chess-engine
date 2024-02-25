@@ -2,7 +2,6 @@
 use crate::tables::piece_sq_tables::{create_pesto_piece_sqaure, ColoredTables};
 use crate::tables::zobrist::{init_zobrist, hash};
 use crate::bots::bot_traits::ChessScoring;
-use crate::piece_sq_tables::{create_pesto_piece_sqaure, ColoredTables};
 use crate::types::pieces_colored::PiecesColored;
 use crate::uci::uci::Uci;
 use crate::{bots::bot_traits::Evaluation, moves::move_gen::generate_moves};
