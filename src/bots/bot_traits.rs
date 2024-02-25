@@ -1,5 +1,5 @@
 use crate::bots::basic_bot::BasicBot;
-use chess::{Board, ChessMove};
+use chess::{Board, ChessMove, Piece};
 
 use std::time::Instant;
 
@@ -42,5 +42,36 @@ impl Evaluation for BasicBot {
         let check = self.evaluate_mates(board, moves, is_maximizing_player);
 
         material + position as i32 + check
+    }
+}
+
+pub trait ChessScoring {
+    fn mvv_lva_score(&self, chess_move: &ChessMove, board: &Board) -> Option<i32>;
+    fn piece_value(&self, piece: Piece) -> i32;
+}
+
+impl ChessScoring for BasicBot {
+    fn mvv_lva_score(&self, chess_move: &ChessMove, board: &Board) -> Option<i32> {
+        let victim_piece = board.piece_on(chess_move.get_dest());
+        let aggressor_piece = board.piece_on(chess_move.get_source());
+
+        match (victim_piece, aggressor_piece) {
+            (Some(victim), Some(aggressor)) => {
+                let victim_value = self.piece_value(victim);
+                let aggressor_value = self.piece_value(aggressor);
+                Some(victim_value - aggressor_value)
+            }
+            _ => None,
+        }
+    }
+
+    fn piece_value(&self, piece: Piece) -> i32 {
+        match piece {
+            Piece::Pawn => 1,
+            Piece::Knight | Piece::Bishop => 3,
+            Piece::Rook => 5,
+            Piece::Queen => 9,
+            Piece::King => std::i32::MAX,
+        }
     }
 }

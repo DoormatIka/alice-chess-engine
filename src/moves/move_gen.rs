@@ -23,4 +23,3 @@ pub fn generate_moves(board: &Board) -> Vec<ChessMove> {
 
     return moves;
 }
-

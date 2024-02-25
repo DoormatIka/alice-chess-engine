@@ -1,6 +1,8 @@
 
 use crate::tables::piece_sq_tables::{create_pesto_piece_sqaure, ColoredTables};
 use crate::tables::zobrist::{init_zobrist, hash};
+use crate::bots::bot_traits::ChessScoring;
+use crate::piece_sq_tables::{create_pesto_piece_sqaure, ColoredTables};
 use crate::types::pieces_colored::PiecesColored;
 use crate::uci::uci::Uci;
 use crate::{bots::bot_traits::Evaluation, moves::move_gen::generate_moves};
@@ -67,24 +69,7 @@ impl BasicBot {
             )
         };
 
-        let white_pieces = PiecesColored::get_colored_pieces(board, Color::White); // works
-        let black_pieces = PiecesColored::get_colored_pieces(board, Color::Black); // works
-        let white_material = self.calculate_material(white_pieces); // works
-        let black_material = self.calculate_material(black_pieces); // works
-
-        let total_material = white_material + black_material;
-
-        let max_material = 7800.0; // Maximum possible material at the start of the game
-        let game_phase = total_material as f32 / max_material;
-
-        let mg_phase = game_phase;
-        let eg_phase = 1.0 - game_phase;
-
-        let weighted_mg_score = mg_phase * mg_score as f32;
-        let weighted_eg_score = eg_phase * eg_score as f32;
-
-
-        let score = weighted_mg_score + weighted_eg_score;
+        let score = self.calculate_score(board, mg_score, eg_score);
 
         score
     }
@@ -149,12 +134,13 @@ impl BasicBot {
         material
     }
 
-    pub fn evaluate_mates(&self, board: &Board, moves: &Vec<ChessMove>, is_maximizing_player: bool) -> i32 {
-        let perspective = if is_maximizing_player {
-            -1
-        } else {
-            1
-        };
+    pub fn evaluate_mates(
+        &self,
+        board: &Board,
+        moves: &Vec<ChessMove>,
+        is_maximizing_player: bool,
+    ) -> i32 {
+        let perspective = if is_maximizing_player { -1 } else { 1 };
         let check = if moves.len() == 0 {
             let checkers = board.checkers();
             if checkers.popcnt() >= 1 {
@@ -196,7 +182,7 @@ impl BasicBot {
                 regular_moves.push(board_move);
             }
         }
-        
+
         regular_moves.sort_by_key(|chess_move: &ChessMove| {
             let source = chess_move.get_source().to_int() as usize;
             let dest = chess_move.get_dest().to_int() as usize;
@@ -205,11 +191,14 @@ impl BasicBot {
             } else {
                 0
             };
-            let mvv_lva_score = -self.mvv_lva_score(chess_move, &board).unwrap_or(0); 
+            let mvv_lva_score = -self.mvv_lva_score(chess_move, &board).unwrap_or(0);
             (history_score, mvv_lva_score)
         });
-        
-        let sorted_moves = killer_moves.into_iter().chain(regular_moves.into_iter()).collect::<Vec<ChessMove>>();
+
+        let sorted_moves = killer_moves
+            .into_iter()
+            .chain(regular_moves.into_iter())
+            .collect::<Vec<ChessMove>>();
         if depth == 0 {
             let evaluation = self.evaluation(board, &sorted_moves, is_maximizing_player);
             return (evaluation, None);
@@ -240,13 +229,7 @@ impl BasicBot {
                 alpha = cmp::max(alpha, best_val);
 
                 if beta <= alpha {
-                    self.killer_moves[depth as usize].rotate_right(1);
-                    self.killer_moves[depth as usize][0] = Some(*board_move);
-
-                    let source = board_move.get_source().to_int() as usize;
-                    let dest = board_move.get_dest().to_int() as usize;
-                    self.history_table[source][dest] += 1;
-
+                    self.update_killer_move(depth, *board_move);
                     break;
                 }
             }
@@ -275,13 +258,7 @@ impl BasicBot {
                 beta = cmp::min(beta, best_val);
 
                 if beta <= alpha {
-                    self.killer_moves[depth as usize].rotate_right(1);
-                    self.killer_moves[depth as usize][0] = Some(*board_move);
-
-                    let source = board_move.get_source().to_int() as usize;
-                    let dest = board_move.get_dest().to_int() as usize;
-                    self.history_table[source][dest] += 1;
-
+                    self.update_killer_move(depth, *board_move);
                     break;
                 }
             }
@@ -289,28 +266,33 @@ impl BasicBot {
             (best_val, best_move)
         }
     }
-    fn mvv_lva_score(&self, chess_move: &ChessMove, board: &Board) -> Option<i32> {
-        let victim_piece = board.piece_on(chess_move.get_dest());
-        let aggressor_piece = board.piece_on(chess_move.get_source());
-    
-        match (victim_piece, aggressor_piece) {
-            (Some(victim), Some(aggressor)) => {
-                let victim_value = self.piece_value(victim);
-                let aggressor_value = self.piece_value(aggressor);
-                Some(victim_value - aggressor_value)
-            },
-            _ => None, 
-        }
+    fn calculate_score(&self, board: &Board, mg_score: i32, eg_score: i32) -> f32 {
+        let white_pieces = PiecesColored::get_colored_pieces(board, Color::White);
+        let black_pieces = PiecesColored::get_colored_pieces(board, Color::Black);
+        let white_material = self.calculate_material(white_pieces);
+        let black_material = self.calculate_material(black_pieces);
+
+        let total_material = white_material + black_material;
+
+        let max_material = 7800.0;
+
+        let game_phase = total_material as f32 / max_material;
+
+        let mg_phase = game_phase;
+        let eg_phase = 1.0 - game_phase;
+
+        let weighted_mg_score = mg_phase * mg_score as f32;
+        let weighted_eg_score = eg_phase * eg_score as f32;
+
+        weighted_mg_score + weighted_eg_score
     }
-    
-    fn piece_value(&self, piece: Piece) -> i32 {
-        match piece {
-            Piece::Pawn => 1,
-            Piece::Knight | Piece::Bishop => 3,
-            Piece::Rook => 5,
-            Piece::Queen => 9,
-            Piece::King => std::i32::MAX,
-        }
+
+    fn update_killer_move(&mut self, depth: u16, board_move: ChessMove) {
+        self.killer_moves[depth as usize].rotate_right(1);
+        self.killer_moves[depth as usize][0] = Some(board_move);
+
+        let source = board_move.get_source().to_int() as usize;
+        let dest = board_move.get_dest().to_int() as usize;
+        self.history_table[source][dest] += 1;
     }
-    
 }
