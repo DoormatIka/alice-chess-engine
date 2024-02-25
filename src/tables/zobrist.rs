@@ -4,7 +4,9 @@ use std::collections::VecDeque;
 use chess::{Piece, Board, Square, Color, ChessMove};
 use rand::Rng;
 
-const DEFAULT_CAPACITY: usize = 1000;
+// Rough estimate of 40 bytes per capacity usage, so 500000 * 40 = 20MB
+const DEFAULT_CAPACITY: usize = 500000; 
+
 #[derive(Debug)]
 pub struct NodeInfo {
     pub eval: i32,
