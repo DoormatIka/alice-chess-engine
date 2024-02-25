@@ -1,51 +1,50 @@
-use std::collections::HashMap;
-use std::collections::hash_map::DefaultHasher;
-use std::hash::{Hash, Hasher};
+use std::{collections::HashMap, fmt::Debug};
+use nohash_hasher::BuildNoHashHasher;
 
-use chess::{Piece, Board, Square, Color};
+use chess::{Piece, Board, Square, Color, ChessMove};
 use rand::Rng;
 
-struct BoardHasher {
-    hash: u64,
+#[derive(Debug)]
+pub struct NodeInfo {
+    pub eval: i32,
+    pub best_move: ChessMove,
 }
 
-impl BoardHasher {
+pub struct ZobristHashMap<V> {
+    map: HashMap<u64, V, BuildNoHashHasher<u64>>,
+    zobrist_table: ([[u64; 6]; 64], [[u64; 6]; 64]),
+}
+
+impl<V> Default for ZobristHashMap<V> {
+    fn default() -> Self {
+        Self { map: Default::default(), zobrist_table: init_zobrist() }
+    }
+}
+
+impl<V> ZobristHashMap<V> where V: Debug {
     pub fn new() -> Self {
-        Self { hash: 0 }
+        ZobristHashMap { 
+            map: HashMap::with_hasher(BuildNoHashHasher::default()),
+            zobrist_table: init_zobrist(),
+        }
     }
-}
-
-impl Hasher for BoardHasher {
-    fn finish(&self) -> u64 {
-        self.hash
+    pub fn insert(&mut self, key: &Board, value: V) -> Option<V> {
+        let hashd = hash(key, self.zobrist_table.0, self.zobrist_table.1);
+        self.map.insert(hashd, value)
     }
-
-    fn write(&mut self, bytes: &[u8]) {
-        
+    pub fn contains(&self, key: &Board) -> bool {
+        let hashd = hash(key, self.zobrist_table.0, self.zobrist_table.1);
+        self.map.contains_key(&hashd)
     }
-}
-
-#[derive(Default)]
-struct ZobristHash<K, V> {
-    map: HashMap<K, V>,
-}
-
-impl<K, V> ZobristHash<K, V> where K: Eq + Hash {
-    fn new() -> Self {
-        ZobristHash { map: HashMap::new() }
+    pub fn get(&self, key: &Board) -> Option<&V> {
+        let hashd = hash(key, self.zobrist_table.0, self.zobrist_table.1);
+        self.map.get(&hashd)
     }
-    fn custom_hash(&self, key: &K) -> u64 {
-        let mut hasher = DefaultHasher::new();
-        0 // TODO: MAKE THIS IMPLEMENT THE ZOBRIST HASHHH
-    }
-    fn insert(&mut self, key: K, value: V) -> Option<V> {
-        self.map.insert(key, value)
-    }
-    fn contains(&self, key: &K) -> bool {
-        self.map.contains_key(key)
-    }
-    fn len(&self) -> usize {
+    pub fn len(&self) -> usize {
         self.map.len()
+    }
+    pub fn print(&self) {
+        println!("{:#?}", self.map);
     }
 }
 

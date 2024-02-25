@@ -1,6 +1,6 @@
 
 use crate::tables::piece_sq_tables::{create_pesto_piece_sqaure, ColoredTables};
-use crate::tables::zobrist::{init_zobrist, hash};
+use crate::tables::zobrist::{ZobristHashMap, NodeInfo};
 use crate::bots::bot_traits::ChessScoring;
 use crate::types::pieces_colored::PiecesColored;
 use crate::uci::uci::Uci;
@@ -8,21 +8,15 @@ use crate::{bots::bot_traits::Evaluation, moves::move_gen::generate_moves};
 
 use chess::{Board, ChessMove, Color, Piece, ALL_SQUARES};
 use std::cmp;
-use std::collections::HashMap;
 
-struct NodeInfo {
-    eval: i32,
-    best_move: ChessMove,
-}
 
 pub struct BasicBot {
     pub board: Board,
     pub uci: Uci,
     pesto: (ColoredTables, ColoredTables),
-    zobrist_table: ([[u64; 6]; 64], [[u64; 6]; 64]),
     killer_moves: Vec<Vec<Option<ChessMove>>>,
     history_table: [[i32; 64]; 64], 
-    tt_table: HashMap<u64, NodeInfo>,
+    tt_table: ZobristHashMap<NodeInfo>,
 }
 
 impl BasicBot {
@@ -30,11 +24,10 @@ impl BasicBot {
         Self {
             board: board.clone(),
             pesto: create_pesto_piece_sqaure(),
-            zobrist_table: init_zobrist(),
             uci: Uci::default(),
             killer_moves: vec![vec![None; 4]; 15], // Fix this later, Make dynamic setting of this based on depth
             history_table: [[0; 64]; 64],
-            tt_table: HashMap::new(),
+            tt_table: ZobristHashMap::new(),
         }
     }
 
@@ -170,9 +163,6 @@ impl BasicBot {
         let all_moves = generate_moves(&board);
         let mut killer_moves: Vec<ChessMove> = Vec::new();
         let mut regular_moves: Vec<ChessMove> = Vec::new();
-
-        let h = hash(&board, self.zobrist_table.0, self.zobrist_table.1);
-        println!("Hash: {}, board: {}", h, &board);
         
         for board_move in all_moves {
             if self.killer_moves[depth as usize].contains(&Some(board_move)) {
@@ -200,6 +190,8 @@ impl BasicBot {
             .collect::<Vec<ChessMove>>();
         if depth == 0 {
             let evaluation = self.evaluation(board, &sorted_moves, is_maximizing_player);
+            self.tt_table.insert(board, NodeInfo { eval: evaluation, best_move: ChessMove::default() });
+            self.tt_table.print();
             return (evaluation, None);
         }
 
