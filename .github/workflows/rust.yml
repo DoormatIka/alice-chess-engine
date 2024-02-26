@@ -47,6 +47,7 @@ jobs:
         run: cargo build --verbose --locked --release --target ${{ matrix.target }}
 
       - name: Create tag
+        id: create_tag
         run: |
           # Set the version number to the current date and time
           VERSION=$(date +v%Y%m%d%H%M%S)
@@ -66,8 +67,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.PAT }}
         with:
-          tag_name: ${{ steps.create_tag.outputs.VERSION }}
-          release_name: Release ${{ steps.create_tag.outputs.VERSION }}
+          tag_name: ${{ steps.create_tag.outputs.version }}
+          release_name: Release ${{ steps.create_tag.outputs.version }}      
           draft: false
           prerelease: true
  
