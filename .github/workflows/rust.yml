@@ -60,19 +60,6 @@ jobs:
         env:
           GIT_COMMITTER_NAME: github-actions
           GIT_COMMITTER_EMAIL: github-actions@github.com
-      
-      
-      - name: Create release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.PAT }}
-        with:
-          tag_name: ${{ steps.create_tag.outputs.version }}
-          release_name: Release ${{ steps.create_tag.outputs.version }}      
-          draft: false
-          prerelease: true
- 
  
       - name: Release Binary
         shell: bash
@@ -94,4 +81,16 @@ jobs:
 
           # Move the built binary where you want it
           mv "${BIN_OUTPUT}" "./bin/${BIN_RELEASE}"
+              
+      
+      - name: Create release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.PAT }}
+        with:
+          tag_name: ${{ steps.create_tag.outputs.version }}
+          release_name: Release ${{ steps.create_tag.outputs.version }}      
+          draft: false
+          prerelease: true
           
