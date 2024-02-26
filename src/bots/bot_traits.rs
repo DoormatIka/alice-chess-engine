@@ -159,28 +159,29 @@ impl ScoreCalculator for BasicBot {
         let mut white_eg = 0;
         let mut black_eg = 0;
         let (mg_pesto, eg_pesto) = &self.pesto;
-
+    
         for sq in ALL_SQUARES {
             let piece = board.piece_on(sq);
             let color = board.color_on(sq);
-
+            let index = sq.to_index(); 
+    
             if let Some(piece) = piece {
                 let piece = self.piece_to_int(piece);
                 if let Some(color) = color {
                     match color {
                         Color::White => {
-                            white_mg += mg_pesto.white[piece as usize][sq.to_int() as usize];
-                            white_eg += eg_pesto.white[piece as usize][sq.to_int() as usize];
+                            white_mg += mg_pesto.white[piece as usize][index];
+                            white_eg += eg_pesto.white[piece as usize][index];
                         }
                         Color::Black => {
-                            black_mg += mg_pesto.black[piece as usize][sq.to_int() as usize];
-                            black_eg += eg_pesto.black[piece as usize][sq.to_int() as usize];
+                            black_mg += mg_pesto.black[piece as usize][index];
+                            black_eg += eg_pesto.black[piece as usize][index];
                         }
                     }
                 }
             }
         }
-
+    
         (white_mg, white_eg, black_mg, black_eg)
     }
 
