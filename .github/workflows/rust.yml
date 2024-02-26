@@ -50,6 +50,7 @@ jobs:
         run: |
           # Set the version number to the current date and time
           VERSION=$(date +v%Y%m%d%H%M%S)
+          echo "::set-output name=version::$VERSION"
           # Create the tag
           git tag $VERSION
           # Push the tag to the remote repository
