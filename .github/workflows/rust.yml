@@ -1,9 +1,7 @@
-name: Build
+name: Release
 
 on:
   push:
-    branches: [ "main" ]
-  pull_request:
     branches: [ "main" ]
 
 env:
@@ -44,6 +42,17 @@ jobs:
  
       - name: Build Binary
         run: cargo build --verbose --locked --release --target ${{ matrix.target }}
+
+      - name: Create release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.event.release.tag_name }}
+          release_name: Release ${{ github.event.release.tag_name }}
+          draft: false
+          prerelease: true
  
       - name: Release Binary
         shell: bash
@@ -61,4 +70,5 @@ jobs:
           BIN_RELEASE_VERSIONED="${PROJECT_NAME}-${{ github.ref_name }}-${{ matrix.name }}${BIN_SUFFIX}"
  
           # Move the built binary where you want it
-          mv "${BIN_OUTPUT}" "./<your-destination>/${BIN_RELEASE}"
+          mv "${BIN_OUTPUT}" "./bin/${BIN_RELEASE}"
+          
