@@ -8,11 +8,19 @@ use std::{collections::HashMap, fmt::Debug};
 pub struct NodeInfo {
     pub eval: i32,
     pub best_move: Option<ChessMove>,
+    pub depth: u16,
+}
+
+struct ZobristValues {
+    white_pieces: [[u64; 6]; 64],
+    black_pieces: [[u64; 6]; 64],
+    white_turn: u64,
+    black_turn: u64,
 }
 
 pub struct ZobristHashMap<V> {
     map: HashMap<u64, V, BuildNoHashHasher<u64>>,
-    zobrist_table: ([[u64; 6]; 64], [[u64; 6]; 64]),
+    zobrist_table: ZobristValues,
     keys: VecDeque<u64>,
     capacity: usize,
 }
@@ -38,18 +46,18 @@ where
         }
     }
     pub fn insert(&mut self, key: &Board, value: V) -> Option<V> {
-        let hashd = hash(key, self.zobrist_table.0, self.zobrist_table.1);
+        let hashd = hash(key, &self.zobrist_table);
         self.keys.push_back(hashd);
         let result = self.map.insert(hashd, value);
         self.remove_oldest_if_full();
         result
     }
     pub fn contains(&self, key: &Board) -> bool {
-        let hashd = hash(key, self.zobrist_table.0, self.zobrist_table.1);
+        let hashd = hash(key, &self.zobrist_table);
         self.map.contains_key(&hashd)
     }
     pub fn get(&self, key: &Board) -> Option<&V> {
-        let hashd = hash(key, self.zobrist_table.0, self.zobrist_table.1);
+        let hashd = hash(key, &self.zobrist_table);
         self.map.get(&hashd)
     }
     pub fn len(&self) -> usize {
@@ -67,7 +75,7 @@ where
     }
 }
 
-pub fn init_zobrist() -> ([[u64; 6]; 64], [[u64; 6]; 64]) {
+fn init_zobrist() -> ZobristValues {
     let mut rng = rand::thread_rng();
     let mut black_zobrist_table: [[u64; 6]; 64] = [[0; 6]; 64];
     let mut white_zobrist_table: [[u64; 6]; 64] = [[0; 6]; 64];
@@ -79,24 +87,33 @@ pub fn init_zobrist() -> ([[u64; 6]; 64], [[u64; 6]; 64]) {
         }
     }
 
-    (white_zobrist_table, black_zobrist_table)
+    ZobristValues {
+        white_pieces: white_zobrist_table,
+        black_pieces: black_zobrist_table,
+        white_turn: rng.gen_range(0..u64::MAX),
+        black_turn: rng.gen_range(0..u64::MAX),
+    }
 }
 
-pub fn hash(
+fn hash(
     board: &Board,
-    white_zobrist_table: [[u64; 6]; 64],
-    black_zobrist_table: [[u64; 6]; 64],
+    zobrist_values: &ZobristValues,
 ) -> u64 {
     let mut final_hash = 0;
+    let color_value = match board.side_to_move() {
+        Color::White => zobrist_values.white_turn,
+        Color::Black => zobrist_values.black_turn
+    };
+
     for i in 0..64 {
         if let Some(piece) = board.piece_on(unsafe { Square::new(i) }) {
             if let Some(color) = board.color_on(unsafe { Square::new(i) }) {
                 match color {
                     Color::White => {
-                        final_hash = final_hash ^ white_zobrist_table[i as usize][piece.to_index()]
+                        final_hash = final_hash ^ zobrist_values.white_pieces[i as usize][piece.to_index()] ^ color_value
                     }
                     Color::Black => {
-                        final_hash = final_hash ^ black_zobrist_table[i as usize][piece.to_index()]
+                        final_hash = final_hash ^ zobrist_values.black_pieces[i as usize][piece.to_index()] ^ color_value
                     }
                 };
             }

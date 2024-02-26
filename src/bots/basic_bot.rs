@@ -31,10 +31,10 @@ impl BasicBot {
     }
 
     pub fn reset(&mut self) {
-        for killer_move in &mut self.killer_moves {
-            killer_move.clear();
-            // its probably resetting the vector inside self.killer_moves
-            // into length zero. we need to switch this out with a better data structure
+        for i in 0..self.killer_moves.len() {
+            for j in 0..self.killer_moves[i].len() {
+                self.killer_moves[i][j] = None;
+            }
         }
         self.uci.depth_data.clear();
         self.uci.nodes_total = 0;
@@ -103,7 +103,22 @@ impl BasicBot {
                 let board = board.make_move_new(*board_move);
 
                 let node_info = if self.tt_table.contains(&board) {
-                    self.tt_table.get(&board).map(|v| v.clone()).unwrap()
+                    let node_info = self.tt_table.get(&board).map(|v| v.clone()).unwrap();
+                    // im assuming the deeper it is, the lower the depth is
+                    if node_info.depth < depth {
+                        let (eval, _) = self.internal_search(
+                            &board,
+                            max_depth,
+                            depth - 1,
+                            alpha,
+                            beta,
+                            !is_maximizing_player,
+                            Some(*board_move),
+                        );
+                        NodeInfo { eval, best_move, depth }
+                    } else {
+                        node_info
+                    }
                 } else {
                     let (eval, _) = self.internal_search(
                         &board,
@@ -114,7 +129,7 @@ impl BasicBot {
                         !is_maximizing_player,
                         Some(*board_move),
                     );
-                    NodeInfo { eval, best_move }
+                    NodeInfo { eval, best_move, depth }
                 };
 
                 if node_info.eval > best_val {
@@ -126,6 +141,7 @@ impl BasicBot {
                         NodeInfo {
                             eval: node_info.eval,
                             best_move,
+                            depth
                         },
                     );
                     self.uci.update_depth_data(depth, max_depth, best_move);
@@ -145,7 +161,22 @@ impl BasicBot {
                 let board = board.make_move_new(*board_move);
 
                 let node_info = if self.tt_table.contains(&board) {
-                    self.tt_table.get(&board).map(|v| v.clone()).unwrap()
+                    let node_info = self.tt_table.get(&board).map(|v| v.clone()).unwrap();
+                    // im assuming the deeper it is, the lower the depth is
+                    if node_info.depth < depth {
+                        let (eval, _) = self.internal_search(
+                            &board,
+                            max_depth,
+                            depth - 1,
+                            alpha,
+                            beta,
+                            !is_maximizing_player,
+                            Some(*board_move),
+                        );
+                        NodeInfo { eval, best_move, depth }
+                    } else {
+                        node_info
+                    }
                 } else {
                     let (eval, _) = self.internal_search(
                         &board,
@@ -156,7 +187,7 @@ impl BasicBot {
                         !is_maximizing_player,
                         Some(*board_move),
                     );
-                    NodeInfo { eval, best_move }
+                    NodeInfo { eval, best_move, depth }
                 };
 
                 if node_info.eval < best_val {
@@ -168,6 +199,7 @@ impl BasicBot {
                         NodeInfo {
                             eval: node_info.eval,
                             best_move,
+                            depth
                         },
                     );
                     self.uci.update_depth_data(depth, max_depth, best_move);
