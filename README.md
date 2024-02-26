@@ -8,8 +8,10 @@ This is to be used for an upcoming game made by our group "twoleaflotus".
   - BasicBot (Cirno)
     - Alpha-beta Pruning
     - Material Counting
+    - Piece-square tables (from PeSTO's Evaluation Function)
+    - MVV-LVA
     - Killer Heuristic
-    - Piece-square tables for positioning
+    - TT-tables
     - UCI (`go depth x` only)
 
 ### Todo
