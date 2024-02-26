@@ -5,15 +5,14 @@ use crate::tables::zobrist::{NodeInfo, ZobristHashMap};
 use crate::uci::uci::Uci;
 use crate::{bots::bot_traits::Evaluation, moves::move_gen::generate_moves};
 
-use chess::{Board, ChessMove, Color, Piece};
+use chess::{Board, ChessMove, Piece};
 
 pub struct BasicBot {
     pub board: Board,
     pub uci: Uci,
     pub pesto: (ColoredTables, ColoredTables),
-    killer_moves_white: Vec<Vec<Option<ChessMove>>>,
-    killer_moves_black: Vec<Vec<Option<ChessMove>>>,
-    pub tt_table: ZobristHashMap<NodeInfo>,
+    pub killer_moves: Vec<Vec<Option<ChessMove>>>,
+    tt_table: ZobristHashMap<NodeInfo>,
 }
 
 impl BasicBot {
@@ -22,14 +21,24 @@ impl BasicBot {
             board: board.clone(),
             pesto: create_pesto_piece_sqaure(),
             uci: Uci::default(),
-            killer_moves_white: vec![vec![None; 4]; 15],
-            killer_moves_black: vec![vec![None; 4]; 15],
+            killer_moves: vec![vec![None; 4]; 15],
             tt_table: ZobristHashMap::new(tt_byte_size),
         }
     }
 
     pub fn change_board(&mut self, board: &Board) {
         self.board = board.clone();
+    }
+
+    pub fn reset(&mut self) {
+        for killer_move in &mut self.killer_moves {
+            killer_move.clear();
+            // its probably resetting the vector inside self.killer_moves
+            // into length zero. we need to switch this out with a better data structure
+        }
+        self.uci.depth_data.clear();
+        self.uci.nodes_total = 0;
+        self.uci.ms_passed = 0;
     }
 
     /**
@@ -62,20 +71,16 @@ impl BasicBot {
     ) -> (i32, Option<ChessMove>) {
         let all_moves = generate_moves(&board);
 
-        let killer_moves_vec = if board.side_to_move() == Color::White {
-            &self.killer_moves_white
-        } else {
-            &self.killer_moves_black
-        };
-
         let mut killer_moves: Vec<ChessMove> = Vec::new();
         let mut regular_moves: Vec<ChessMove> = Vec::new();
 
         for board_move in all_moves {
-            if killer_moves_vec[depth as usize].contains(&Some(board_move)) {
-                killer_moves.push(board_move);
-            } else {
-                regular_moves.push(board_move);
+            if let Some(stored_killer_moves) = self.killer_moves.get(depth as usize) {
+                if stored_killer_moves.contains(&Some(board_move)) {
+                    killer_moves.push(board_move);
+                } else {
+                    regular_moves.push(board_move);
+                }
             }
         }
 
@@ -128,7 +133,7 @@ impl BasicBot {
                 alpha = cmp::max(alpha, best_val);
 
                 if beta <= alpha {
-                    self.update_killer_move(depth, *board_move, self.board.side_to_move());
+                    self.update_killer_move(depth, *board_move);
                     break;
                 }
             }
@@ -170,7 +175,7 @@ impl BasicBot {
                 beta = cmp::min(beta, best_val);
 
                 if beta <= alpha {
-                    self.update_killer_move(depth, *board_move, self.board.side_to_move());
+                    self.update_killer_move(depth, *board_move);
                     break;
                 }
             }
@@ -179,13 +184,8 @@ impl BasicBot {
         }
     }
 
-    fn update_killer_move(&mut self, depth: u16, board_move: ChessMove, color: Color) {
-        let killer_moves = if color == Color::White {
-            &mut self.killer_moves_white
-        } else {
-            &mut self.killer_moves_black
-        };
-        killer_moves[depth as usize].rotate_right(1);
-        killer_moves[depth as usize][0] = Some(board_move);
+    fn update_killer_move(&mut self, depth: u16, board_move: ChessMove) {
+        self.killer_moves[depth as usize].rotate_right(1);
+        self.killer_moves[depth as usize][0] = Some(board_move);
     }
 }

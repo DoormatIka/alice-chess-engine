@@ -112,6 +112,8 @@ fn output_thread(out: UciMessage, bot: &mut BasicBot, toggle_ready_ok: &Arc<RwLo
                     }
                     let best_move = UciMessage::best_move(best_uci_move);
                     println!("{}", best_move);
+
+                    bot.reset();
                 }
             };
         }
