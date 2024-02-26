@@ -6,10 +6,10 @@ Two programmers' second attempt at writing a chess engine.
   - BasicBot (Cirno)
     - Alpha-beta Pruning
     - Material Counting
-    - Piece-square tables
-    - History Heuristic
+    - Piece-square tables (from PeSTO's Evaluation Function)
     - MVV-LVA
     - Killer Heuristic
+    - TT-tables
     - UCI (`go depth x` only)
 
 ### Todo
