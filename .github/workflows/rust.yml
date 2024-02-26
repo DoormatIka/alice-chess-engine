@@ -46,12 +46,27 @@ jobs:
       - name: Build Binary
         run: cargo build --verbose --locked --release --target ${{ matrix.target }}
 
+      - name: Upload Binary
+        uses: actions/upload-artifact@v2
+        with:
+          name: ${{ matrix.name }}
+          path: target/${{ matrix.target }}/release/${PROJECT_NAME}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.PAT }}
+
       - name: Create tag
         id: create_tag
         shell: pwsh
         run: |
           # Set the version number to the current date and time
-          $VERSION="${{ matrix.name }}-$(Get-Date -Format "yyyyMMddHHmmss")"
+          $VERSION="release-$(Get-Date -Format "yyyyMMddHHmmss")"
           echo "::set-output name=version::$VERSION"
           # Create the tag
           git tag $VERSION
@@ -60,8 +75,7 @@ jobs:
         env:
           GIT_COMMITTER_NAME: github-actions
           GIT_COMMITTER_EMAIL: github-actions@github.com
-      
-      
+
       - name: Create release
         id: create_release
         uses: actions/create-release@v1
@@ -72,26 +86,18 @@ jobs:
           release_name: Release ${{ steps.create_tag.outputs.version }}      
           draft: false
           prerelease: true
- 
- 
-      - name: Release Binary
-        shell: bash
-        run: |
-          BIN_SUFFIX=""
-          if [[ "${{ matrix.runner }}" == "windows-latest" ]]; then
-            BIN_SUFFIX=".exe"
-          fi
- 
-          # The built binary output location
-          BIN_OUTPUT="target/${{ matrix.target }}/release/${PROJECT_NAME}${BIN_SUFFIX}"
 
-          # Define a better name for the final binary
-          BIN_RELEASE="${PROJECT_NAME}-${{ matrix.name }}${BIN_SUFFIX}"
-          BIN_RELEASE_VERSIONED="${PROJECT_NAME}-${{ github.ref_name }}-${{ matrix.name }}${BIN_SUFFIX}"
+      - name: Download artifacts
+        uses: actions/download-artifact@v2
+        with:
+          path: artifacts
 
-          # Create the destination directory if it doesn't exist
-          mkdir -p ./bin
-
-          # Move the built binary where you want it
-          mv "${BIN_OUTPUT}" "./bin/${BIN_RELEASE}"
-          
+      - name: Upload artifacts to release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.PAT }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./artifacts/${{ matrix.name }}
+          asset_name: ${{ matrix.name }}
+          asset_content_type: application/octet-stream
