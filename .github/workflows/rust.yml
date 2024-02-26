@@ -48,6 +48,10 @@ jobs:
         run: |
           # Set the version number to the current date and time
           VERSION=$(date +v%Y%m%d%H%M%S)
+          # Configure Git to use the PAT for authentication
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+          git config --global url."https://${{ secrets.PAT }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"      
           # Create the tag
           git tag $VERSION
           # Push the tag to the remote repository
