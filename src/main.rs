@@ -39,6 +39,10 @@ fn output_thread(out: UciMessage, bot: &mut BasicBot, toggle_ready_ok: &Arc<RwLo
             *toggle_ready_ok.write().unwrap() = true;
         }
 
+        UciMessage::Quit => {
+            std::process::exit(0);
+        }
+
         UciMessage::Position {
             startpos,
             fen,
@@ -115,6 +119,7 @@ fn output_thread(out: UciMessage, bot: &mut BasicBot, toggle_ready_ok: &Arc<RwLo
 
                     bot.reset();
                 }
+                
             };
         }
         _ => {}
@@ -173,7 +178,8 @@ fn main() {
             | UciMessage::IsReady
             | UciMessage::Position { .. }
             | UciMessage::Go { .. }
-            | UciMessage::Stop => output_tx.send(uci_message),
+            | UciMessage::Stop
+            | UciMessage::Quit => output_tx.send(uci_message),
 
             // not supported, use position startpos moves e2e4 ... instead.
             // https://stackoverflow.com/questions/56528420/basic-questions-on-uci-engine-ucinewgame-and-multiple-clients
