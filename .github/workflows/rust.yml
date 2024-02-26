@@ -44,14 +44,27 @@ jobs:
       - name: Build Binary
         run: cargo build --verbose --locked --release --target ${{ matrix.target }}
 
+      - name: Create tag
+        run: |
+          # Set the version number to the current date and time
+          VERSION=$(date +v%Y%m%d%H%M%S)
+          # Create the tag
+          git tag $VERSION
+          # Push the tag to the remote repository
+          git push origin $VERSION
+        env:
+          GIT_COMMITTER_NAME: github-actions
+          GIT_COMMITTER_EMAIL: github-actions@github.com
+      
+      
       - name: Create release
         id: create_release
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.PAT }}
         with:
-          tag_name: ${{ github.sha }}
-          release_name: Release ${{ github.sha }}
+          tag_name: ${{ steps.create_tag.outputs.VERSION }}
+          release_name: Release ${{ steps.create_tag.outputs.VERSION }}
           draft: false
           prerelease: true
  
