@@ -20,14 +20,14 @@ use crate::uci::conversion;
 pub mod bots;
 pub mod fen;
 pub mod moves;
-pub mod piece_sq_tables;
+pub mod tables;
 pub mod types;
 pub mod uci;
 
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
 
-fn output_thread(out: UciMessage, out_board: &mut Board, toggle_ready_ok: &Arc<RwLock<bool>>) {
+fn output_thread(out: UciMessage, bot: &mut BasicBot, toggle_ready_ok: &Arc<RwLock<bool>>) {
     match out {
         UciMessage::Uci => {
             println!("id name Cirno");
@@ -60,7 +60,7 @@ fn output_thread(out: UciMessage, out_board: &mut Board, toggle_ready_ok: &Arc<R
                         }
                     }
                 }
-                *out_board = new_board;
+                bot.change_board(&new_board);
             }
         }
 
@@ -90,7 +90,6 @@ fn output_thread(out: UciMessage, out_board: &mut Board, toggle_ready_ok: &Arc<R
             };
             if let Some(search_control) = search_control {
                 if let Some(depth) = search_control.depth {
-                    let mut bot = BasicBot::new(&out_board);
                     let (eval, chess_move) = bot.search(depth as u16);
                     let best_uci_move = conversion::chess_move_to_uci_move(&chess_move);
 
@@ -113,6 +112,8 @@ fn output_thread(out: UciMessage, out_board: &mut Board, toggle_ready_ok: &Arc<R
                     }
                     let best_move = UciMessage::best_move(best_uci_move);
                     println!("{}", best_move);
+
+                    bot.reset();
                 }
             };
         }
@@ -144,11 +145,13 @@ fn main() {
 
     // OUTPUT
     thread::spawn(move || {
-        let mut board = Board::default();
+        let board = Board::default();
+        let mut bot = BasicBot::new(&board, 50 * 1000 * 1000);
+
         loop {
             thread::sleep(Duration::from_millis(100));
             match output_rx.try_recv() {
-                Ok(out) => output_thread(out, &mut board, &toggle_ready_ok),
+                Ok(out) => output_thread(out, &mut bot, &toggle_ready_ok),
                 Err(err) => match err {
                     TryRecvError::Disconnected => panic!("Disconnected from the main thread!"),
                     _ => {}
