@@ -87,22 +87,17 @@ jobs:
           draft: false
           prerelease: true
 
-        ## Debugging
-      - name: List target directory
-        run: ls -R target
-
       - name: Download artifacts
         uses: actions/download-artifact@v2
         with:
           path: artifacts
-        
+
       - name: Upload artifacts to release
-        run: |
-            for artifact in artifacts/*; do
-              echo "Uploading $artifact"
-              curl \
-                -H "Authorization: token ${{ secrets.PAT }}" \
-                -H "Content-Type: $(file -b --mime-type $artifact)" \
-                --data-binary @$artifact \
-                "${{ steps.create_release.outputs.upload_url }}?name=$(basename $artifact)"
-            done
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.PAT }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./artifacts/${{ matrix.name }}
+          asset_name: ${{ matrix.name }}
+          asset_content_type: application/octet-stream
