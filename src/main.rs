@@ -4,7 +4,7 @@ use mimalloc::MiMalloc;
 
 use chess::{Board, BoardStatus, Game};
 use std::str::FromStr;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use uci::conversion::uci_move_to_chess_move;
 use vampirc_uci::{parse, UciInfoAttribute, UciMessage, UciTimeControl};
 
@@ -94,7 +94,10 @@ fn output_thread(out: UciMessage, bot: &mut BasicBot, toggle_ready_ok: &Arc<RwLo
             };
             if let Some(search_control) = search_control {
                 if let Some(depth) = search_control.depth {
+                    let start_time = Instant::now();
                     let (eval, chess_move) = bot.search(depth as u16);
+                    let end_time = Instant::now();
+                    println!("Search duration: {:?}", end_time.duration_since(start_time));
                     let best_uci_move = conversion::chess_move_to_uci_move(&chess_move);
 
                     let depth_data = bot.uci.get_depth_data();

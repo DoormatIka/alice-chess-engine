@@ -13,6 +13,8 @@ pub struct BasicBot {
     pub pesto: (ColoredTables, ColoredTables),
     pub killer_moves: Vec<Vec<Option<ChessMove>>>,
     tt_table: ZobristHashMap<NodeInfo>,
+    in_search_killer_moves: Vec<ChessMove>,
+    in_search_normal_moves: Vec<ChessMove>,
 }
 
 impl BasicBot {
@@ -23,6 +25,8 @@ impl BasicBot {
             uci: Uci::default(),
             killer_moves: vec![vec![None; 4]; 15],
             tt_table: ZobristHashMap::new(tt_byte_size),
+            in_search_killer_moves: Vec::new(),
+            in_search_normal_moves: Vec::new(),
         }
     }
 
@@ -36,9 +40,15 @@ impl BasicBot {
                 self.killer_moves[i][j] = None;
             }
         }
+        self.in_search_normal_moves.clear();
+        self.in_search_killer_moves.clear();
         self.uci.depth_data.clear();
         self.uci.nodes_total = 0;
         self.uci.ms_passed = 0;
+    }
+    pub fn reset_in_search_vectors(&mut self) {
+        self.in_search_killer_moves.clear();
+        self.in_search_normal_moves.clear();
     }
 
     /**
@@ -71,23 +81,22 @@ impl BasicBot {
     ) -> (i32, Option<ChessMove>) {
         let all_moves = generate_moves(&board);
 
-        let mut killer_moves: Vec<ChessMove> = Vec::new();
-        let mut regular_moves: Vec<ChessMove> = Vec::new();
-
         for board_move in all_moves {
             if let Some(stored_killer_moves) = self.killer_moves.get(depth as usize) {
                 if stored_killer_moves.contains(&Some(board_move)) {
-                    killer_moves.push(board_move);
+                    self.in_search_killer_moves.push(board_move);
                 } else {
-                    regular_moves.push(board_move);
+                    self.in_search_normal_moves.push(board_move);
                 }
             }
         }
 
-        let sorted_moves = killer_moves
-            .into_iter()
-            .chain(regular_moves.into_iter())
+        let sorted_moves: Vec<ChessMove> = self.in_search_killer_moves.iter()
+            .chain(self.in_search_normal_moves.iter())
+            .map(|f| f.clone())
             .collect();
+
+        self.reset_in_search_vectors();
 
         if depth == 0 {
             let evaluation = self.evaluation(board, &sorted_moves, is_maximizing_player);
@@ -103,7 +112,7 @@ impl BasicBot {
                 let board = board.make_move_new(*board_move);
 
                 let node_info = if self.tt_table.contains(&board) {
-                    let node_info = self.tt_table.get(&board).map(|v| v.clone()).unwrap();
+                    let node_info = self.tt_table.get(&board).unwrap();
                     // im assuming the deeper it is, the lower the depth is
                     if node_info.depth < depth {
                         let (eval, _) = self.internal_search(
@@ -117,7 +126,7 @@ impl BasicBot {
                         );
                         NodeInfo { eval, best_move, depth }
                     } else {
-                        node_info
+                        node_info.clone() // here's to hoping this function won't get called.
                     }
                 } else {
                     let (eval, _) = self.internal_search(
@@ -161,7 +170,7 @@ impl BasicBot {
                 let board = board.make_move_new(*board_move);
 
                 let node_info = if self.tt_table.contains(&board) {
-                    let node_info = self.tt_table.get(&board).map(|v| v.clone()).unwrap();
+                    let node_info = self.tt_table.get(&board).unwrap();
                     // im assuming the deeper it is, the lower the depth is
                     if node_info.depth < depth {
                         let (eval, _) = self.internal_search(
@@ -175,7 +184,7 @@ impl BasicBot {
                         );
                         NodeInfo { eval, best_move, depth }
                     } else {
-                        node_info
+                        node_info.clone() // here's to hoping this function won't get called.
                     }
                 } else {
                     let (eval, _) = self.internal_search(
